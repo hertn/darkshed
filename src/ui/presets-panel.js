@@ -206,14 +206,26 @@ export function createPresetsPanel({ editSync }) {
     amount.set(100); showAmount();
     editSync(); changed({ edit: true }); commit(`Preset: ${name}`);
   }
+  /** Presets replace each other: first undo what the previous preset changed on this photo (settings you changed on other sliders stay). */
+  function revertPrevious(it) {
+    const st = amountState;
+    if (!st || st.id !== it.id) return;
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    for (const k of new Set([...Object.keys(st.base), ...Object.keys(st.target)])) {
+      if (same(st.base[k], st.target[k])) continue;
+      if (st.base[k] === undefined) delete it.params[k]; else it.params[k] = clone(st.base[k]);
+    }
+  }
   function applyLookPreset(patch, label, profile) {
     const it = curItem(); if (!it) return;
+    revertPrevious(it);
     const base = clone(it.params);
     applyLook(it.params, patch, profile);
     finishApply(it, base, label);
   }
   function applyStored(name, pr) {
     const it = curItem(); if (!it) return;
+    revertPrevious(it);
     const base = clone(it.params);
     applyPreset(it.params, pr, '');
     if (pr.mode === 'merge') it.params.profile = base.profile;
@@ -221,6 +233,7 @@ export function createPresetsPanel({ editSync }) {
   }
   function applyLut(id, label) {
     const it = curItem(); if (!it) return;
+    revertPrevious(it);
     const base = clone(it.params);
     applyLook(it.params, {}, 'l:' + id);
     it.params.lut = id; it.params.lutAmount = 100;
