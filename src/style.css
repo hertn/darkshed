@@ -9,6 +9,7 @@
   --fg: #ece7e2; --fg2: #c2bab3; --mut: #8d847d; --dim: #5e5751; --track: #4a4440;
   --acc: #f0402f; --acc2: #d6301f; --acc-soft: rgba(240, 64, 47, .16);
   --ok: #4cc38a; --warn: #f2b23e; --bad: #ff8a7d;
+  --dock-pad: max(8px, calc(env(safe-area-inset-bottom) - 22px));   /* a thin margin above the iOS home bar instead of its full height */
   --topbar: 44px; --rail: 46px; --panelw: 312px; --bottom: 38px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -299,7 +300,7 @@ select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; bor
   body.m details.sec.mshow > .body { padding-top: 0; }
 
   /* tool dock */
-  .dock { display: flex; flex: none; height: calc(var(--dock) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); overflow-x: auto; overflow-y: hidden; background: var(--bg);
+  .dock { display: flex; flex: none; height: calc(var(--dock) + var(--dock-pad)); padding-bottom: var(--dock-pad); overflow-x: auto; overflow-y: hidden; background: var(--bg);
           border-top: 1px solid #000; scrollbar-width: none; -webkit-overflow-scrolling: touch; z-index: 11; }
   .dock::-webkit-scrollbar { display: none; }
   .dk { flex: 0 0 auto; width: 66px; background: transparent; border: 0; color: var(--mut); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; cursor: pointer; padding: 0; }
