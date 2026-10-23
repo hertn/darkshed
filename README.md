@@ -59,7 +59,8 @@ That's it. Your presets are saved in the `data` folder next to the compose file.
 Good to know:
 
 - **Add to Home Screen works over plain `http://`** on a home network. For access from outside your home, put it behind HTTPS (for example `tailscale serve --bg 8080`, a Cloudflare tunnel, or a reverse proxy like Caddy). HTTPS is also needed for offline use.
-- iOS limits exports to about 16 megapixels (a Safari limit). Open RAW files through the **Files** picker. The Photos picker may hand over a converted JPEG.
+- JPEG exports keep their full size on iPhone and iPad (DarkShed encodes them itself). PNG and WebP exports are limited to about 16 megapixels there (a Safari limit), and 16-bit TIFF is desktop only.
+- Open RAW files through the **Files** picker. The Photos picker may hand over a converted JPEG.
 
 ## Syncing presets
 

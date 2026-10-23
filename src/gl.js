@@ -1033,6 +1033,30 @@ export class Renderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.deleteFramebuffer(fbo); gl.deleteTexture(tex);
   }
+  /**
+   * Same as finishFullBands but 8-bit: onBand(Uint8Array RGBA rows, top, n), top to bottom. Needs no canvas of the output size,
+   * so photos above Safari's ~16 MP canvas limit can still be encoded.
+   */
+  async finishFullBands8(state, outW, outH, onBand, { outSharp = 0, rows = 128 } = {}) {
+    const gl = this.gl;
+    const tex = Renderer.tex2d(gl, outW, rows, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('Export target is not supported on this device');
+    const buf = new Uint8Array(outW * rows * 4), out = new Uint8Array(outW * rows * 4);
+    for (let top = 0; top < outH; top += rows) {
+      const n = Math.min(rows, outH - top);
+      const yb = outH - top - n;                                   // framebuffer rows are bottom-up
+      this.passFinish(state, false, { fit: false, size: [this.imgW, this.imgH], fullScale: outW / this.imgW, outFull: [outW, outH], outSharp, target: fbo, viewport: [0, -yb, outW, outH] });
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.readPixels(0, 0, outW, n, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      for (let r = 0; r < n; r++) out.set(buf.subarray((n - 1 - r) * outW * 4, (n - r) * outW * 4), r * outW * 4);   // flip
+      await onBand(out.subarray(0, outW * n * 4), top, n);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.deleteFramebuffer(fbo); gl.deleteTexture(tex);
+  }
   dispose() { try { this.gl.getExtension('WEBGL_lose_context')?.loseContext(); } catch {} }
 
   // ---------- preset / look thumbnails ----------

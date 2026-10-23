@@ -9,12 +9,13 @@ import { zip } from './zip.js';
 import { patchImage, accessRgb16, accessRgba8 } from './spots.js';
 import { displayP3Profile, injectIccJpeg, injectIccPng } from './icc.js';
 import { tiff16 } from './tiff.js';
+import { jpegEncoder } from './jpeg.js';
 import { selectedItems } from './library.js';
 import { modal, toast } from './ui/overlays.js';
 import { lsGet, lsSet } from './store.js';
 
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const IOS_MAX_PIXELS = 16_000_000;     // Safari's canvas area limit is ~16.7 MP
+const IOS_MAX_PIXELS = 16_000_000;     // Safari's canvas area limit is ~16.7 MP; PNG / WebP still go through a canvas
 const STRIP = 512;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/tiff': 'tif' };
@@ -49,7 +50,8 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
     let scale = opts.longEdge ? Math.min(1, opts.longEdge / Math.max(cw, ch)) : 1;
     let note = full.reduced ? 'RAW decoded at reduced size (low memory). ' : '';
     if (wantP3 && !p3) note += 'Display P3 only applies to RAW files; this one is sRGB. ';
-    if (IOS && !wantTiff && cw * ch * scale * scale > IOS_MAX_PIXELS) { scale = Math.sqrt(IOS_MAX_PIXELS / (cw * ch)); note += 'Capped to 16 MP on iOS. '; }
+    const ownJpeg = opts.format === 'image/jpeg' && (IOS || globalThis.__ownJpeg);   // own encoder: no canvas size limit
+    if (IOS && !wantTiff && !ownJpeg && cw * ch * scale * scale > IOS_MAX_PIXELS) { scale = Math.sqrt(IOS_MAX_PIXELS / (cw * ch)); note += 'Capped to 16 MP on iOS. '; }
     if (Math.max(cw, ch) * scale > er.maxTex) scale = er.maxTex / Math.max(cw, ch);
     const outW = Math.max(1, Math.round(cw * scale)), outH = Math.max(1, Math.round(ch * scale));
 
@@ -116,10 +118,22 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
       return { blob: tiff16(outW, outH, parts, icc), name: `${item.name}${opts.suffix}.tif`, w: outW, h: outH, note };
     }
 
-    onProgress(0.93, 'Encoding…');
-    er.finishFull(st, outW, outH, { outSharp });
     const type = opts.format;
-    let blob = await new Promise((res) => canvas.toBlob(res, type, opts.quality));
+    let blob;
+    if (ownJpeg) {
+      onProgress(0.9, 'Encoding JPEG…');
+      const enc = jpegEncoder(outW, outH, { quality: Math.round(opts.quality * 100), subsample: opts.quality < 0.93 });
+      await er.finishFullBands8(st, outW, outH, async (rows8, top, n) => {
+        enc.push(rows8, n);
+        onProgress(0.9 + 0.09 * ((top + n) / outH), 'Encoding JPEG…');
+        check(); await tick();
+      }, { outSharp });
+      blob = enc.finish();
+    } else {
+      onProgress(0.93, 'Encoding…');
+      er.finishFull(st, outW, outH, { outSharp });
+      blob = await new Promise((res) => canvas.toBlob(res, type, opts.quality));
+    }
     if (!blob) throw new Error('The browser could not encode this image (too large?)');
     if (blob.type === 'image/jpeg' && opts.keepExif && full.exifSeg) blob = await injectExif(blob, patchExif(full.exifSeg, outW, outH));
     if (icc && blob.type === 'image/jpeg') blob = await injectIccJpeg(blob, icc);
@@ -247,7 +261,7 @@ export function openExportDialog() {
     const bar = document.createElement('i'); prog.append(bar); body.append(prog);
     const msg = document.createElement('div'); msg.className = 'm-msg'; body.append(msg);
     const out = document.createElement('div'); out.className = 'btn-row'; body.append(out);
-    if (IOS) { const n = document.createElement('p'); n.className = 'hint'; n.textContent = 'On iPhone / iPad, exports are capped at about 16 megapixels (no TIFF).'; body.append(n); }
+    if (IOS) { const n = document.createElement('p'); n.className = 'hint'; n.textContent = 'On iPhone / iPad, JPEG exports keep their full size. PNG and WebP are limited to about 16 megapixels, and TIFF is not available.'; body.append(n); }
 
     api.start = async () => {
       const go = api.foot.querySelector('.primary');
