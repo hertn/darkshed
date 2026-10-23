@@ -194,7 +194,7 @@ function shortcutsModal() {
   const rows = [
     ['Undo / redo', 'Ctrl/Cmd + Z / Shift + Z'], ['Before / after', '\\'], ['Next / previous photo', '→ / ←'],
     ['Zoom fit / 100%', 'Z'], ['Zoom in / out', '+ / −'], ['Rating', '0 – 5'], ['Pick / reject / unflag', 'P / X / U'],
-    ['Grid / cull view', 'G'], ['Edit / crop / spot removal / masking / info', 'E / C / Q / M / I'], ['Mask overlay / spot visibility', 'O / H'], ['Copy / paste settings', 'Ctrl/Cmd + Shift + C / V'],
+    ['Grid / cull view', 'G'], ['Full screen (browser)', 'F'], ['Edit / crop / spot removal / masking / info', 'E / C / Q / M / I'], ['Mask overlay / spot visibility', 'O / H'], ['Copy / paste settings', 'Ctrl/Cmd + Shift + C / V'],
     ['Export', 'Ctrl/Cmd + E'], ['Pan', 'Space + drag'],
   ];
   modal('Keyboard shortcuts', (body) => {
@@ -203,6 +203,15 @@ function shortcutsModal() {
     body.append(dl);
     const n = document.createElement('p'); n.className = 'hint'; n.textContent = 'In the grid: arrows move, Enter opens, Shift / Ctrl-click selects several, then P / X / U or 0–5 apply to all selected.'; body.append(n);
   }, { buttons: [{ label: 'Close', primary: true, onClick: (m) => m.close() }] });
+}
+// full screen (like F11): hides the browser's own bars. Not offered where it cannot work (iPhone Safari) or is pointless (installed app).
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+const fsCan = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled) && !matchMedia('(display-mode: standalone)').matches && !navigator.standalone;
+async function toggleFullscreen() {
+  try {
+    if (fsEl()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else await (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen).call(document.documentElement);
+  } catch { toast('This browser did not allow full screen'); }
 }
 $('btnMenu').onclick = () => menu([
   { label: 'Add photos…', onClick: openFiles },
@@ -215,6 +224,7 @@ $('btnMenu').onclick = () => menu([
   'sep',
   ...(document.body.classList.contains('m') ? [] : [{ label: 'Solo mode (one section open)', check: isSolo(), onClick: () => setSolo(!isSolo()) }]),
   { label: 'Show filmstrip', check: !$('strip').classList.contains('hidden'), onClick: () => $('btnFilm').click() },
+  ...(fsCan ? [{ label: 'Full screen', kb: 'F', check: !!fsEl(), onClick: toggleFullscreen }] : []),
   { label: 'Show performance stats', check: !!app.showHud, onClick: () => { app.showHud = !app.showHud; lsSet('hud', app.showHud ? '1' : '0'); updateHud(); } },
   'sep',
   { label: 'Sync & settings…', onClick: () => bus.emit('open-settings') },
@@ -243,6 +253,7 @@ addEventListener('keydown', (e) => {
   if (k === 'ArrowRight') lib.step(1);
   else if (k === 'ArrowLeft') lib.step(-1);
   else if (k === 'g' || k === 'G') grid.toggle();
+  else if ((k === 'f' || k === 'F') && fsCan) toggleFullscreen();
   else if (k === '\\') { app.bypass = !app.bypass; $('btnBefore').classList.toggle('on', app.bypass); invalidateAll(); }
   else if (k === 'z' || k === 'Z') zoomToggle();
   else if (k === '+' || k === '=') zoomAt(0, 0, 1.5);
