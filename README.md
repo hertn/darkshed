@@ -129,6 +129,13 @@ npm run dev      # http://localhost:5173, also reachable from your phone on the 
 
 Plain JavaScript with no framework. Image processing is WebGL2 shaders; the server (`server/index.mjs`) is one Node file with no dependencies and only stores presets and LUTs.
 
+## Contributing
+
+Forks, bug reports and pull requests are welcome. DarkShed is a hobby project made for personal use, so replies can be slow and I can't promise to merge everything or fix every issue. If you want something different, fork it and make it yours, the license allows that.
+
+- **Found a bug or have an idea?** Open an [issue](https://github.com/hertn/darkshed/issues). A short description and your device (for example "iPhone 16 Pro, iOS 26") helps a lot.
+- **Want to change the code?** Fork the repo, make your change, and open a pull request. `CLAUDE.md` has notes on how the project is laid out and how it is tested.
+
 ## License and credits
 
 Directed by [Hert Niks](https://github.com/hertn). Built by [Claude](https://claude.com/claude-code) (Anthropic).
