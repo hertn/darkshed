@@ -31,16 +31,5 @@ bus.on('open-about', () => {
     para(ABOUT.byline, 'font-size:12px;color:var(--mut);margin-top:10px');
     para(ABOUT.credits, 'font-size:12px;color:var(--mut)');
     para(ABOUT.disclaimer, 'font-size:12px;color:var(--mut)');
-    // screen diagnostics: handy when the layout looks wrong on a phone
-    const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;padding-bottom:env(safe-area-inset-bottom);visibility:hidden'; document.body.append(probe);
-    const inset = probe.offsetHeight; probe.remove();
-    const r = (id) => { const e = document.getElementById(id); return e ? Math.round(e.getBoundingClientRect().bottom) : '-'; };
-    const unit = (h) => { const e = document.createElement('div'); e.style.cssText = `position:fixed;left:0;top:0;width:1px;height:${h};visibility:hidden`; document.body.append(e); const v = Math.round(e.getBoundingClientRect().height); e.remove(); return v; };
-    const topIn = (() => { const e = document.createElement('div'); e.style.cssText = 'position:fixed;left:0;top:0;width:1px;padding-top:env(safe-area-inset-top);visibility:hidden'; document.body.append(e); const v = e.offsetHeight; e.remove(); return v; })();
-    const units = `vh ${unit('100vh')} dvh ${unit('100dvh')} svh ${unit('100svh')} lvh ${unit('100lvh')} fill ${unit('-webkit-fill-available')} top inset ${topIn} appTop ${Math.round(document.getElementById('app').getBoundingClientRect().top)} availH ${screen.availHeight} clientH ${document.documentElement.clientHeight} vvTop ${window.visualViewport ? Math.round(window.visualViewport.offsetTop) : '-'}`;
-    const vv = window.visualViewport;
-    const diag = `Display: ${navigator.standalone || matchMedia('(display-mode: standalone)').matches ? 'home-screen app' : 'browser'} · window ${innerWidth}×${innerHeight} · screen ${screen.width}×${screen.height} · visual ${vv ? Math.round(vv.width) + '×' + Math.round(vv.height) : '-'} · bottom inset ${inset} · app bottom ${r('app')} · dock bottom ${r('dock')}\n${units}`;
-    para(diag, 'font-size:11px;color:var(--dim);font-family:ui-monospace,monospace');
-    if (import.meta.env.DEV) fetch('/__shot?name=phone-diag', { method: 'POST', body: diag + '\n' + navigator.userAgent + '\nvh probe: ' + Math.round(document.documentElement.getBoundingClientRect().height) }).catch(() => {});
   }, { buttons: [{ label: 'Close', primary: true, onClick: (m) => m.close() }] });
 });
