@@ -1,6 +1,6 @@
 // Presets pane: built-in looks, LUTs, user + imported Lightroom presets, each previewed on the current photo.
 import { app, curItem, changed, commit, bus } from '../app.js';
-import { clone } from '../params.js';
+import { clone, defaults } from '../params.js';
 import { BUILTIN, applyLook, applyPreset, blendParams, previewParams, userPresets, loadUserPresets, savePreset, deletePreset, renamePreset, movePreset, renameGroup, updatePreset, importPresetFiles, listLuts, saveLut, getLut } from '../looks.js';
 import { toXmp } from '../lrpreset.js';
 import { zip } from '../zip.js';
@@ -84,7 +84,7 @@ export function createPresetsPanel({ editSync }) {
     const c = document.createElement('canvas'); c.width = 96; c.height = 96;
     const s = document.createElement('span'); s.textContent = name;
     d.append(c, s);
-    d.onclick = () => { onClick(); markActive(d); };
+    d.onclick = () => { if (!curItem()) { toast('Open a photo first'); return; } onClick(); markActive(d); };
     if (items) {
       const more = document.createElement('button'); more.className = 'more'; more.textContent = '⋯'; more.title = 'Rename, move, update, delete…';
       more.onclick = (e) => { e.stopPropagation(); menu(items(), more); };
@@ -105,9 +105,8 @@ export function createPresetsPanel({ editSync }) {
     const lutFull = await Promise.all(luts.map((l) => getLut(l.id)));
     if (seq !== rebuildSeq) return;
     body.textContent = ''; tiles.length = 0; groupList.length = 0; curWrap = null;
-    if (!it) { body.innerHTML = '<p class="hint">Open a photo to preview looks.</p>'; return; }
     showAmount();
-    const base = clone(it.params);
+    const base = it ? clone(it.params) : defaults();      // with no photo open the looks are listed without previews
     const lookState = (patch, profile) => { const p = clone(base); applyLook(p, patch, profile); return { p }; };
 
     const g1 = section('Fujifilm-inspired looks');
@@ -152,6 +151,7 @@ export function createPresetsPanel({ editSync }) {
         });
       }
     }
+    if (!it) { const h = document.createElement('p'); h.className = 'hint'; h.style.margin = '8px 16px'; h.textContent = 'Open a photo to preview these looks on it and apply them.'; body.prepend(h); }
     buildChips();
     renderThumbs();
   }
@@ -219,14 +219,14 @@ export function createPresetsPanel({ editSync }) {
     }
   }
   function applyLookPreset(patch, label, profile) {
-    const it = curItem(); if (!it) return;
+    const it = curItem(); if (!it) { toast('Open a photo first'); return; }
     revertPrevious(it);
     const base = clone(it.params);
     applyLook(it.params, patch, profile);
     finishApply(it, base, label);
   }
   function applyStored(name, pr) {
-    const it = curItem(); if (!it) return;
+    const it = curItem(); if (!it) { toast('Open a photo first'); return; }
     revertPrevious(it);
     const base = clone(it.params);
     applyPreset(it.params, pr, '');
@@ -234,7 +234,7 @@ export function createPresetsPanel({ editSync }) {
     finishApply(it, base, name);
   }
   function applyLut(id, label) {
-    const it = curItem(); if (!it) return;
+    const it = curItem(); if (!it) { toast('Open a photo first'); return; }
     revertPrevious(it);
     const base = clone(it.params);
     applyLook(it.params, {}, 'l:' + id);
