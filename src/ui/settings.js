@@ -7,7 +7,13 @@ import { storageInfo, clearStored, keepPrefs, applyLimitsNow } from '../persist.
 
 bus.on('open-settings', () => {
   let statusEl;
-  const paint = () => { if (statusEl) statusEl.textContent = sync.enabled ? `Connected${sync.last ? ' · last sync ' + new Date(sync.last).toLocaleTimeString() : ''}` : `Not connected (${sync.status})`; };
+  const paint = () => {
+    if (!statusEl) return;
+    const target = lsGet('syncUrl', '') || location.origin;
+    if (sync.enabled) { statusEl.textContent = `Connected to ${target}${sync.last ? ' · last sync ' + new Date(sync.last).toLocaleTimeString() : ''}`; return; }
+    statusEl.textContent = `Not syncing: ${sync.status.charAt(0).toLowerCase() + sync.status.slice(1)}. This app is running from ${location.origin}.`
+      + (lsGet('syncUrl', '') ? '' : ' With the Server URL empty, DarkShed looks for the sync server at this same address. If that is not your DarkShed server (for example you opened a test copy), open DarkShed from your server\'s address instead (for example http://your-server:8080).');
+  };
   modal('Sync & settings', (body) => {
     const intro = document.createElement('p'); intro.className = 'hint'; intro.style.margin = '4px 20px 10px';
     intro.textContent = 'Presets and imported LUTs sync through your DarkShed server. Photos never leave your device. When the app is served by the DarkShed server it connects automatically.';
@@ -60,6 +66,6 @@ bus.on('open-settings', () => {
     const tips = document.createElement('p'); tips.className = 'hint'; tips.style.margin = '10px 20px 6px';
     tips.textContent = 'Install: on iPhone / iPad use Share → Add to Home Screen; on desktop Chrome use the install icon in the address bar.';
     body.append(tips);
-  }, { buttons: [{ label: 'Close', primary: true, onClick: (m) => m.close() }] });
+  }, { closeX: true });
 });
 bus.on('sync-status', () => {});

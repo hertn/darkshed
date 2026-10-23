@@ -116,9 +116,12 @@ Good to know:
 
 ## Syncing presets
 
-Sync is automatic when you open the app from your own server, and **optional**: everything also works on a single device without it.
+Sync is automatic when you open the app **from your own DarkShed server**, and optional: everything also works on a single device without it. There is nothing to set up. Leave **Server URL** empty, and enter a **Token** only if you started the server with `DARKSHED_TOKEN`.
 
-Under **Menu → Sync & settings** you can see the status, enter a token if you set one, or point the app at a different server address. Photos and per-photo edits are never sent to the server.
+- **Use the same address on every device.** Presets sync through the server you opened the app from. A test copy (for example `localhost:5173` from `npm run dev`) or a different address is a separate app with its own presets and does not sync.
+- **When it syncs:** when the app opens, a moment after you change a preset, and when you switch back to the app. A preset added on one device shows up on another the next time that device opens the app or comes back to it.
+- **Check it:** **Menu → Sync & settings** shows "Connected" or says why it is not syncing.
+- Photos and per-photo edits are never sent to the server.
 
 ## Development
 

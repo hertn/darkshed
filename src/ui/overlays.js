@@ -41,7 +41,7 @@ export function menu(items, at) {
 }
 
 /** Simple modal. build(body) fills the content; returns { close, body, foot }. */
-export function modal(title, build, { buttons = [] } = {}) {
+export function modal(title, build, { buttons = [], closeX = false } = {}) {
   const root = document.getElementById('modalRoot');
   const back = document.createElement('div'); back.className = 'modal-back';
   const m = document.createElement('div'); m.className = 'modal';
@@ -49,10 +49,16 @@ export function modal(title, build, { buttons = [] } = {}) {
   const body = document.createElement('div'); body.className = 'm-body';
   const foot = document.createElement('div'); foot.className = 'm-foot';
   m.append(h, body, foot); back.append(m); root.append(back);
+  if (!buttons.length) foot.remove();
   const close = () => { back.remove(); removeEventListener('keydown', onKey, true); };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   addEventListener('keydown', onKey, true);
   back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
+  if (closeX) {          // close button in the top-right corner
+    h.classList.add('with-x');
+    const x = document.createElement('button'); x.className = 'm-x'; x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.innerHTML = '&times;'; x.onclick = close;
+    h.append(x);
+  }
   const api = { close, body, foot, title: h };
   build(body, api);
   for (const b of buttons) {

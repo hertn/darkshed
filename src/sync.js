@@ -18,8 +18,8 @@ export async function ping() {
     const r = await api('/api/ping');
     if (r.status === 401) return { ok: false, msg: 'Wrong or missing token' };
     if (!r.ok) return { ok: false, msg: `Server answered ${r.status}` };
-    const j = await r.json();
-    return j.ok ? { ok: true, auth: j.auth } : { ok: false, msg: 'Not a DarkShed server' };
+    const j = await r.json().catch(() => null);
+    return j && j.ok ? { ok: true, auth: j.auth } : { ok: false, msg: 'This address is not a DarkShed server' };
   } catch { return { ok: false, msg: 'Could not reach the server' }; }
 }
 
