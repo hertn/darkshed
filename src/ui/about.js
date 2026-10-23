@@ -31,5 +31,11 @@ bus.on('open-about', () => {
     para(ABOUT.byline, 'font-size:12px;color:var(--mut);margin-top:10px');
     para(ABOUT.credits, 'font-size:12px;color:var(--mut)');
     para(ABOUT.disclaimer, 'font-size:12px;color:var(--mut)');
+    // screen diagnostics: handy when the layout looks wrong on a phone
+    const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;padding-bottom:env(safe-area-inset-bottom);visibility:hidden'; document.body.append(probe);
+    const inset = probe.offsetHeight; probe.remove();
+    const r = (id) => { const e = document.getElementById(id); return e ? Math.round(e.getBoundingClientRect().bottom) : '-'; };
+    const vv = window.visualViewport;
+    para(`Display: ${navigator.standalone || matchMedia('(display-mode: standalone)').matches ? 'home-screen app' : 'browser'} · window ${innerWidth}×${innerHeight} · screen ${screen.width}×${screen.height} · visual ${vv ? Math.round(vv.width) + '×' + Math.round(vv.height) : '-'} · bottom inset ${inset} · app bottom ${r('app')} · dock bottom ${r('dock')}`, 'font-size:11px;color:var(--dim);font-family:ui-monospace,monospace');
   }, { buttons: [{ label: 'Close', primary: true, onClick: (m) => m.close() }] });
 });
