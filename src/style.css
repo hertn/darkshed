@@ -362,8 +362,3 @@ body.m .btn.m-only { display: inline-flex !important; }
 }
 
 @media (max-width: 860px) { .mini.bw-btn.bw-on { background: var(--acc); color: #fff; } }
-
-/* iOS home-screen app: dvh / fixed-inset report a window 62px shorter than the screen (it leaves a gap under the bottom menu); vh reports the real height */
-@media (display-mode: standalone) {
-  #app { bottom: auto; height: 100vh; }
-}
