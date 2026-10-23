@@ -23,7 +23,7 @@ Docker (easiest): download `docker-compose.yml` from this repo, then run
 docker compose pull
 docker compose up -d
 ```
-The image comes from `ghcr.io/hertn/darkshed` and is rebuilt automatically on every change. Presets and LUTs live in `./data`. To update later, run the same two commands again.
+The image comes from `ghcr.io/hertn/darkshed` and is rebuilt automatically on every change. Presets and LUTs live in `./data`. Updates are automatic: the bundled Watchtower container checks for a new image every hour and restarts DarkShed with it (delete the `watchtower` block in the compose file to turn this off, then update by hand with the same two commands).
 
 Put it behind HTTPS (a reverse proxy, Tailscale serve, Cloudflare tunnel…): service workers, "Add to Home Screen" and the iOS share sheet need a secure context.
 

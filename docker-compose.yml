@@ -9,3 +9,16 @@ services:
       DARKSHED_TOKEN: ""
     volumes:
       - ./data:/data
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  # Optional: checks GitHub every hour and updates DarkShed by itself. Delete this block to update by hand.
+  watchtower:
+    image: nickfedor/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"   # only touches containers with the label above
+      WATCHTOWER_POLL_INTERVAL: "3600"  # seconds
+      WATCHTOWER_CLEANUP: "true"        # remove old images
