@@ -22,11 +22,14 @@ export function createPresetsPanel({ editSync }) {
   const actions = document.createElement('div'); actions.className = 'btn-row'; actions.style.paddingTop = '0';
   const mkBtn = (label, ic, fn) => { const b = document.createElement('button'); b.className = 'btn small'; b.innerHTML = icon(ic, 15) + label; b.onclick = (e) => fn(e, b); actions.append(b); return b; };
   mkBtn('Save', 'plus', saveDialog);
-  const presetInput = document.createElement('input'); presetInput.type = 'file'; presetInput.hidden = true; presetInput.multiple = true; presetInput.accept = '.xmp,.lrtemplate,.zip';
+  const presetInput = document.createElement('input'); presetInput.type = 'file'; presetInput.hidden = true; presetInput.multiple = true;
+  // iOS greys out file types it does not know (.xmp, .lrtemplate, .cube), so there it must show every file; the import skips anything it cannot use
+  const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!IOS) presetInput.accept = '.xmp,.lrtemplate,.zip';
   presetInput.onchange = async () => { const files = [...presetInput.files]; presetInput.value = ''; if (files.length) await doImport(files); };
   mkBtn('Import…', 'import', () => presetInput.click());
   mkBtn('Export…', 'export', (e, b) => exportMenu(b));
-  const lutInput = document.createElement('input'); lutInput.type = 'file'; lutInput.accept = '.cube'; lutInput.hidden = true; lutInput.multiple = true;
+  const lutInput = document.createElement('input'); lutInput.type = 'file'; if (!IOS) lutInput.accept = '.cube'; lutInput.hidden = true; lutInput.multiple = true;
   lutInput.onchange = async () => {
     for (const f of lutInput.files) {
       try { const l = parseCube(await f.text()); await saveLut((l.title || f.name.replace(/\.cube$/i, '')), l.size, l.data); toast(`Imported ${f.name}`); }
