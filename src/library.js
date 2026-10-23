@@ -71,6 +71,14 @@ export function renderStrip() {
     tile.append(meta);
     tile.addEventListener('pointerdown', (e) => onTileDown(e, it));
     tile.addEventListener('contextmenu', (e) => { e.preventDefault(); onTileMenu(e, it); });
+    const more = document.createElement('button'); more.className = 'more'; more.textContent = '⋯'; more.title = 'More…';
+    more.addEventListener('pointerdown', (e) => e.stopPropagation());
+    more.onclick = (e) => { e.stopPropagation(); const r = more.getBoundingClientRect(); onTileMenu({ clientX: r.left, clientY: r.top }, it); };
+    tile.append(more);
+    let hold = 0, hx = 0, hy = 0;                                // touch: press and hold opens the same menu
+    tile.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') return; hx = e.clientX; hy = e.clientY; clearTimeout(hold); hold = setTimeout(() => { hold = 0; onTileMenu({ clientX: hx, clientY: hy }, it); }, 550); });
+    tile.addEventListener('pointermove', (e) => { if (hold && Math.hypot(e.clientX - hx, e.clientY - hy) > 8) { clearTimeout(hold); hold = 0; } });
+    for (const t of ['pointerup', 'pointercancel']) tile.addEventListener(t, () => { clearTimeout(hold); hold = 0; });
     it.tile = tile; it.cv = cv;
     strip.append(tile);
     paintTile(it);
