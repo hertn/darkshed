@@ -8,7 +8,7 @@ services:
       # optional: require this token for preset / LUT sync (enter it under Menu > Sync & settings)
       DARKSHED_TOKEN: ""
     volumes:
-      - ./data:/data
+      - ./data:/data:z                  # ':z' lets SELinux (Fedora, RHEL) allow writing here
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
@@ -16,6 +16,8 @@ services:
   watchtower:
     image: nickfedor/watchtower
     restart: unless-stopped
+    security_opt:
+      - label=disable                   # SELinux (Fedora, RHEL) otherwise blocks access to the Docker socket
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
