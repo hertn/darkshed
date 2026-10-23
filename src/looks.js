@@ -156,6 +156,28 @@ export async function renamePreset(oldName, newName) {
   user.__deleted = { ...(user.__deleted || {}), [oldName]: Date.now() };
   await persist();
 }
+const DEFAULT_GROUP = 'My presets';
+/** Move one preset to another category ('' or "My presets" = the default one). */
+export async function movePreset(name, group) {
+  if (!loaded) await loadUserPresets();
+  if (!user[name]) return;
+  user[name] = { ...user[name], group: group === DEFAULT_GROUP ? '' : group, updatedAt: Date.now() };
+  await persist();
+}
+/** Rename a category: every preset in it moves to the new name. */
+export async function renameGroup(oldName, newName) {
+  if (!loaded) await loadUserPresets();
+  const to = newName === DEFAULT_GROUP ? '' : newName;
+  for (const n of Object.keys(user)) if (n !== '__deleted' && (user[n].group || DEFAULT_GROUP) === oldName) user[n] = { ...user[n], group: to, updatedAt: Date.now() };
+  await persist();
+}
+/** Overwrite a preset with a photo's current settings (name and category stay). */
+export async function updatePreset(name, params) {
+  if (!loaded) await loadUserPresets();
+  if (!user[name]) return;
+  user[name] = { ...user[name], patch: snapshotLook(params), mode: 'replace', updatedAt: Date.now() };
+  await persist();
+}
 export async function replaceUserPresets(obj) { user = obj; await persist(); }
 export async function mergeUserPresets(obj) {
   if (!loaded) await loadUserPresets();

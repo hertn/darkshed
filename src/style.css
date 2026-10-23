@@ -179,8 +179,8 @@ select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; bor
 .preset canvas { width: 100%; aspect-ratio: 1; border-radius: 4px; display: block; background: var(--well); border: 2px solid transparent; }
 .preset.on canvas { border-color: var(--acc); }
 .preset span { display: block; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.preset .del { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; border: 0; background: #000a; color: #fff; font-size: 12px; line-height: 1; cursor: pointer; opacity: 0; padding: 0; }
-.preset:hover .del { opacity: 1; }
+.preset .more { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: #000b; color: #fff; font-size: 14px; line-height: 1; letter-spacing: -1px; cursor: pointer; opacity: 0; padding: 0; }
+.preset:hover .more, .preset .more:focus-visible { opacity: 1; }
 .group-title { padding: 10px 16px 4px; color: var(--mut); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
 
 /* masks */
@@ -384,8 +384,7 @@ body.m .btn.m-only { display: inline-flex !important; }
   body.m .pgroup .preset-grid { display: flex; gap: 10px; overflow-x: auto; padding: 2px 14px 8px; scrollbar-width: none; }
   body.m .pgroup .preset-grid::-webkit-scrollbar { display: none; }
   body.m .pgroup .preset { flex: 0 0 82px; }
-  body.m .preset .del { opacity: .85; }
-  body.m .pane[data-pane=presets] .pane-title, body.m .pane[data-pane=presets] .pane-sub { display: none; }
+  body.m   body.m .pane[data-pane=presets] .pane-title, body.m .pane[data-pane=presets] .pane-sub { display: none; }
   body.m .pane[data-pane=presets] .btn-row { overflow-x: auto; flex-wrap: nowrap; padding: 6px 14px 4px; scrollbar-width: none; }
   body.m .pane[data-pane=presets] .btn-row .btn { flex: 0 0 auto; }
 }

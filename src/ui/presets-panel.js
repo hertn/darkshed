@@ -1,7 +1,7 @@
 // Presets pane: built-in looks, LUTs, user + imported Lightroom presets, each previewed on the current photo.
 import { app, curItem, changed, commit, bus } from '../app.js';
 import { clone } from '../params.js';
-import { BUILTIN, applyLook, applyPreset, blendParams, previewParams, userPresets, loadUserPresets, savePreset, deletePreset, renamePreset, importPresetFiles, listLuts, saveLut, getLut } from '../looks.js';
+import { BUILTIN, applyLook, applyPreset, blendParams, previewParams, userPresets, loadUserPresets, savePreset, deletePreset, renamePreset, movePreset, renameGroup, updatePreset, importPresetFiles, listLuts, saveLut, getLut } from '../looks.js';
 import { toXmp } from '../lrpreset.js';
 import { zip } from '../zip.js';
 import { parseCube } from '../lut.js';
@@ -56,30 +56,51 @@ export function createPresetsPanel({ editSync }) {
   let thumbsFor = null, building = 0;
   const tiles = [];
 
-  const groupList = [];     // { title, wrap }: the phone shows one group at a time, picked with chips
+  const groupList = [];     // { title, wrap, mine }: the phone shows one group at a time, picked with chips
   let curWrap = null;
-  function section(title) {
-    const wrap = document.createElement('div'); wrap.className = 'pgroup'; body.append(wrap); curWrap = wrap; groupList.push({ title, wrap });
+  function section(title, mine = false) {
+    const wrap = document.createElement('div'); wrap.className = 'pgroup'; body.append(wrap); curWrap = wrap; groupList.push({ title, wrap, mine });
     const t = document.createElement('div'); t.className = 'group-title'; t.textContent = title; wrap.append(t);
+    if (mine) holdMenu(t, (a) => openCategoryMenu(title, a), t);
     const g = document.createElement('div'); g.className = 'preset-grid'; wrap.append(g); return g;
   }
   function hint(text) { const p = document.createElement('p'); p.className = 'hint'; p.style.margin = '0 16px 8px'; p.textContent = text; (curWrap || body).append(p); }
-  function tile(grid, name, state, onClick, { onDelete, onMenu, active } = {}) {
+
+  // right-click on desktop, press and hold on a phone
+  function holdMenu(el, openMenu, anchor) {
+    el.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu({ x: e.clientX, y: e.clientY }); });
+    let timer = 0, sx = 0, sy = 0, held = false;
+    el.addEventListener('touchstart', (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; held = false; timer = setTimeout(() => { timer = 0; held = true; openMenu(anchor || { x: sx, y: sy }); }, 550); }, { passive: true });
+    el.addEventListener('touchmove', (e) => { const t = e.touches[0]; if (timer && Math.hypot(t.clientX - sx, t.clientY - sy) > 8) { clearTimeout(timer); timer = 0; } }, { passive: true });
+    el.addEventListener('touchend', (e) => { if (timer) { clearTimeout(timer); timer = 0; } if (held) { held = false; e.preventDefault(); } });
+    el.addEventListener('touchcancel', () => { if (timer) { clearTimeout(timer); timer = 0; } });
+  }
+  function tile(grid, name, state, onClick, { items, active } = {}) {
     const d = document.createElement('div'); d.className = 'preset' + (active ? ' on' : ''); d.title = name;
     const c = document.createElement('canvas'); c.width = 96; c.height = 96;
     const s = document.createElement('span'); s.textContent = name;
     d.append(c, s);
     d.onclick = onClick;
-    if (onMenu) d.oncontextmenu = (e) => { e.preventDefault(); onMenu(e); };
-    if (onDelete) { const x = document.createElement('button'); x.className = 'del'; x.textContent = '×'; x.title = 'Delete'; x.onclick = (e) => { e.stopPropagation(); onDelete(); }; d.append(x); }
+    if (items) {
+      const more = document.createElement('button'); more.className = 'more'; more.textContent = '⋯'; more.title = 'Rename, move, update, delete…';
+      more.onclick = (e) => { e.stopPropagation(); menu(items(), more); };
+      d.append(more);
+      holdMenu(d, (anchor) => menu(items(), anchor), more);
+    }
     grid.append(d);
     tiles.push({ canvas: c, state });
     return d;
   }
 
+  let rebuildSeq = 0;
   async function rebuild() {
-    body.textContent = ''; tiles.length = 0; groupList.length = 0; curWrap = null;
+    const seq = ++rebuildSeq;
     const it = curItem();
+    // everything asynchronous first, so two rebuilds can never draw into the list at the same time
+    const luts = it ? await listLuts() : [];
+    const lutFull = await Promise.all(luts.map((l) => getLut(l.id)));
+    if (seq !== rebuildSeq) return;
+    body.textContent = ''; tiles.length = 0; groupList.length = 0; curWrap = null;
     if (!it) { body.innerHTML = '<p class="hint">Open a photo to preview looks.</p>'; return; }
     showAmount();
     const base = clone(it.params);
@@ -90,57 +111,67 @@ export function createPresetsPanel({ editSync }) {
     for (const l of BUILTIN) tile(g1, l.name, lookState(l.patch, 'b:' + l.name), () => applyLookPreset(l.patch, l.name, 'b:' + l.name), { active: base.profile === 'b:' + l.name });
     hint('Approximations built from the sliders. They are not Fujifilm\'s own film simulations.');
 
-    const luts = await listLuts();
     if (luts.length) {
       const g2 = section('LUTs');
-      for (const l of luts) {
-        const full = await getLut(l.id);
+      luts.forEach((l, k) => {
         const p = clone(base); applyLook(p, {}, 'l:' + l.id); p.lut = l.id; p.lutAmount = 100;
-        tile(g2, l.name, { p, lut: full }, () => applyLut(l.id, l.name), { onDelete: async () => { await removeLutEverywhere(l.id); rebuild(); }, active: base.lut === l.id });
-      }
+        tile(g2, l.name, { p, lut: lutFull[k] }, () => applyLut(l.id, l.name), {
+          active: base.lut === l.id,
+          items: () => [
+            { label: 'Apply', onClick: () => applyLut(l.id, l.name) },
+            'sep',
+            { label: 'Delete…', onClick: () => confirmDialog(`Delete LUT "${l.name}"?`, 'It is removed from this device and from your other devices if you sync. This cannot be undone.', 'Delete', async () => { await removeLutEverywhere(l.id); rebuild(); }) },
+          ],
+        });
+      });
     } else hint('Import .cube files to use them as looks.');
 
     const mine = userPresets();
     const names = Object.keys(mine).filter((n) => n !== '__deleted');
     const groups = new Map();
     for (const n of names) { const g = mine[n].group || 'My presets'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(n); }
-    if (!groups.size) { section('My presets').remove(); hint('Use "Save" to keep the current look, or "Import…" for Lightroom presets.'); }
+    if (!groups.size) { section('My presets', false); hint('Use "Save" to keep the current look, or "Import…" for Lightroom presets.'); }
     for (const [g, list] of [...groups].sort((a, b) => (a[0] === 'My presets' ? -1 : b[0] === 'My presets' ? 1 : a[0].localeCompare(b[0])))) {
-      const grid = section(g);
+      const grid = section(g, true);
       for (const n of list.sort((a, b) => a.localeCompare(b))) {
         const pr = mine[n];
         tile(grid, n, { p: previewParams(base, pr) }, () => applyStored(n, pr), {
-          onDelete: async () => { await deletePreset(n); rebuild(); },
-          onMenu: (e) => menu([
+          items: () => [
             { label: 'Apply', onClick: () => applyStored(n, pr) },
-            { label: 'Export as Lightroom preset (.xmp)', onClick: () => exportOne(n, pr) },
             { label: 'Rename…', onClick: () => renameDialog(n) },
+            { label: 'Move to category…', onClick: () => moveDialog(n, g) },
+            { label: 'Update with current settings…', onClick: () => updateDialog(n) },
+            { label: 'Export as Lightroom preset (.xmp)', onClick: () => exportOne(n, pr) },
             'sep',
-            { label: 'Delete', onClick: async () => { await deletePreset(n); rebuild(); } },
-          ], { x: e.clientX, y: e.clientY }),
+            { label: 'Delete…', onClick: () => confirmDialog(`Delete "${n}"?`, 'This preset is removed from this device and from your other devices if you sync. This cannot be undone.', 'Delete', async () => { await deletePreset(n); rebuild(); }) },
+          ],
         });
       }
     }
-    buildChips(base);
+    buildChips();
     renderThumbs();
   }
 
   // phone: a row of category chips; only the chosen category is shown, as one horizontal strip
   let activeGroup = '';
+  const chips = document.createElement('div'); chips.className = 'pchips';
   function showGroup(title) {
     activeGroup = title;
     for (const g of groupList) g.wrap.classList.toggle('cur', g.title === title);
     for (const c of chips.children) c.classList.toggle('on', c.dataset.g === title);
     chips.querySelector('.on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
-  const chips = document.createElement('div'); chips.className = 'pchips';
-  function buildChips(base) {
+  function buildChips() {
     chips.textContent = '';
-    for (const g of groupList) { const b = document.createElement('button'); b.className = 'pchip'; b.dataset.g = g.title; b.textContent = g.title; b.onclick = () => showGroup(g.title); chips.append(b); }
+    for (const g of groupList) {
+      const b = document.createElement('button'); b.className = 'pchip'; b.dataset.g = g.title; b.textContent = g.title; b.onclick = () => showGroup(g.title); chips.append(b);
+      if (g.mine) holdMenu(b, (a) => openCategoryMenu(g.title, a), b);
+    }
     body.prepend(chips);
     const activeTile = groupList.find((g) => g.wrap.querySelector('.preset.on'))?.title;
     showGroup(groupList.some((g) => g.title === activeGroup) ? activeGroup : (activeTile || groupList[0]?.title || ''));
   }
+  function openCategoryMenu(title, anchor) { menu([{ label: 'Rename category…', onClick: () => renameCategoryDialog(title) }], anchor); }
 
   function renderThumbs() {
     const r = app.renderer, L = app.loaded;
@@ -248,6 +279,42 @@ export function createPresetsPanel({ editSync }) {
   function saveDialog() {
     const it = curItem(); if (!it) return;
     nameDialog('Save preset', '', async (n) => { await savePreset(n, it.params); toast(`Saved "${n}"`); rebuild(); });
+  }
+  function confirmDialog(title, text, okLabel, onOk) {
+    modal(title, (b) => { const p = document.createElement('p'); p.className = 'hint'; p.style.margin = '6px 20px 4px'; p.textContent = text; b.append(p); },
+      { buttons: [{ label: 'Cancel', onClick: (m) => m.close() }, { label: okLabel, primary: true, onClick: (m) => { m.close(); onOk(); } }] });
+  }
+  function updateDialog(name) {
+    const it = curItem(); if (!it) return;
+    confirmDialog(`Update "${name}"?`, 'The preset is replaced with the current photo\'s settings. Its name and category stay. The old settings are lost.', 'Update', async () => { await updatePreset(name, it.params); toast(`Updated "${name}"`); rebuild(); });
+  }
+  function moveDialog(name, current) {
+    const mine = userPresets();
+    const cats = [...new Set(Object.keys(mine).filter((n) => n !== '__deleted').map((n) => mine[n].group || 'My presets'))].sort((a, b) => (a === 'My presets' ? -1 : b === 'My presets' ? 1 : a.localeCompare(b)));
+    if (!cats.includes('My presets')) cats.unshift('My presets');
+    const NEW = '\u0000new';
+    let sel, inp;
+    modal(`Move "${name}"`, (b) => {
+      const row = document.createElement('div'); row.className = 'field-row';
+      const lab = document.createElement('label'); lab.textContent = 'Category';
+      sel = document.createElement('select');
+      for (const c of cats) { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.append(o); }
+      const on = document.createElement('option'); on.value = NEW; on.textContent = 'New category…'; sel.append(on);
+      sel.value = current;
+      row.append(lab, sel); b.append(row);
+      const row2 = document.createElement('div'); row2.className = 'field-row'; row2.style.display = 'none';
+      const lab2 = document.createElement('label'); lab2.textContent = 'Name';
+      inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 40; inp.placeholder = 'New category name';
+      row2.append(lab2, inp); b.append(row2);
+      sel.onchange = () => { row2.style.display = sel.value === NEW ? '' : 'none'; if (sel.value === NEW) inp.focus(); };
+    }, { buttons: [{ label: 'Cancel', onClick: (m) => m.close() }, { label: 'Move', primary: true, onClick: async (m) => {
+      const g = sel.value === NEW ? inp.value.trim() : sel.value;
+      if (!g || g === '__deleted') return;
+      m.close(); await movePreset(name, g); rebuild();
+    } }] });
+  }
+  function renameCategoryDialog(old) {
+    nameDialog('Rename category', old, async (n) => { await renameGroup(old, n); activeGroup = n; rebuild(); }, 'Every preset in this category moves to the new name.');
   }
   function renameDialog(old) {
     nameDialog('Rename preset', old, async (n) => { await renamePreset(old, n); rebuild(); });
