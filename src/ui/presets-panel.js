@@ -75,12 +75,15 @@ export function createPresetsPanel({ editSync }) {
     el.addEventListener('touchend', (e) => { if (timer) { clearTimeout(timer); timer = 0; } if (held) { held = false; e.preventDefault(); } });
     el.addEventListener('touchcancel', () => { if (timer) { clearTimeout(timer); timer = 0; } });
   }
-  function tile(grid, name, state, onClick, { items, active } = {}) {
-    const d = document.createElement('div'); d.className = 'preset' + (active ? ' on' : ''); d.title = name;
+  // the outline follows whatever was applied last to this photo
+  const lastApplied = (applyName) => { const it = curItem(); return !!(amountState && it && amountState.id === it.id && amountState.name === applyName); };
+  function markActive(d) { for (const o of body.querySelectorAll('.preset.on')) o.classList.remove('on'); d.classList.add('on'); }
+  function tile(grid, name, state, onClick, { items, active, applyName = name } = {}) {
+    const d = document.createElement('div'); d.className = 'preset' + ((amountState && curItem()?.id === amountState.id ? lastApplied(applyName) : active) ? ' on' : ''); d.title = name;
     const c = document.createElement('canvas'); c.width = 96; c.height = 96;
     const s = document.createElement('span'); s.textContent = name;
     d.append(c, s);
-    d.onclick = onClick;
+    d.onclick = () => { onClick(); markActive(d); };
     if (items) {
       const more = document.createElement('button'); more.className = 'more'; more.textContent = '⋯'; more.title = 'Rename, move, update, delete…';
       more.onclick = (e) => { e.stopPropagation(); menu(items(), more); };
@@ -116,7 +119,7 @@ export function createPresetsPanel({ editSync }) {
       luts.forEach((l, k) => {
         const p = clone(base); applyLook(p, {}, 'l:' + l.id); p.lut = l.id; p.lutAmount = 100;
         tile(g2, l.name, { p, lut: lutFull[k] }, () => applyLut(l.id, l.name), {
-          active: base.lut === l.id,
+          active: base.lut === l.id, applyName: `LUT ${l.name}`,
           items: () => [
             { label: 'Apply', onClick: () => applyLut(l.id, l.name) },
             'sep',
