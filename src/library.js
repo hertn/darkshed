@@ -3,7 +3,7 @@ import { app, bus, curItem, makeItem, loadSaved, initHistory, changed, saveNow, 
 import { loadImage, loadThumb, isRaw } from './decode.js';
 import { setImage, resetView } from './viewport.js';
 import { icon } from './ui/icons.js';
-import { menu, toast } from './ui/overlays.js';
+import { menu, toast, modal } from './ui/overlays.js';
 import { makeGeo } from './geometry.js';
 import { keepPhoto, keepThumb, forgetPhoto, saveIndex, readLibrary } from './persist.js';
 
@@ -134,7 +134,7 @@ function onTileMenu(e, it) {
     { label: 'Reject', kb: 'X', onClick: () => setFlag(-1) },
     { label: 'Unflag', kb: 'U', onClick: () => setFlag(0) },
     'sep',
-    { label: n > 1 ? `Remove ${n} from library` : 'Remove from library', onClick: () => removeSelected() },
+    { label: n > 1 ? `Remove ${n} from library…` : 'Remove from library…', onClick: () => confirmRemoveSelected() },
   ], { x: e.clientX, y: e.clientY });
 }
 
@@ -232,6 +232,15 @@ export function step(d) {
 bus.on('library', () => { renderStrip(); saveIndex(); });
 bus.on('select', () => saveIndex());
 
+/** Ask first; removing deletes the stored copy kept in this browser. The original file is never touched. */
+export function confirmRemoveSelected() {
+  const n = selectedItems().length; if (!n) return;
+  modal(n > 1 ? `Remove ${n} photos?` : 'Remove this photo?', (b) => {
+    const p = document.createElement('p'); p.className = 'hint'; p.style.margin = '6px 20px 4px';
+    p.textContent = 'It is removed from DarkShed, and the copy stored on this device is deleted. Your original file in Photos or Files is not touched.';
+    b.append(p);
+  }, { buttons: [{ label: 'Cancel', onClick: (m) => m.close() }, { label: 'Remove', primary: true, onClick: (m) => { m.close(); removeSelected(); } }] });
+}
 export function removeSelected() {
   const ids = new Set(selectedItems().map((x) => x.id));
   const curId = curItem()?.id;

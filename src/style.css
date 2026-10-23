@@ -388,3 +388,4 @@ body.m .btn.m-only { display: inline-flex !important; }
   body.m .pane[data-pane=presets] .btn-row { overflow-x: auto; flex-wrap: nowrap; padding: 6px 14px 4px; scrollbar-width: none; }
   body.m .pane[data-pane=presets] .btn-row .btn { flex: 0 0 auto; }
 }
+.cell { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
