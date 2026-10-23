@@ -58,23 +58,39 @@ export function createGrid(host) {
       c.classList.toggle('rejected', it.flag < 0);
       c.onpointerdown = (e) => onDown(e, it);
       c.ondblclick = () => open(it);
-      c.oncontextmenu = (e) => { e.preventDefault(); if (!app.sel.has(it.id)) { app.sel = new Set([it.id]); render(); } menu([
-        { label: 'Open', onClick: () => open(it) },
-        'sep',
-        { label: 'Pick', kb: 'P', onClick: () => lib.setFlag(1) }, { label: 'Reject', kb: 'X', onClick: () => lib.setFlag(-1) }, { label: 'Unflag', kb: 'U', onClick: () => lib.setFlag(0) },
-        'sep',
-        { label: 'Copy settings', onClick: () => bus.emit('cmd', 'copy') }, { label: 'Paste settings', onClick: () => bus.emit('cmd', 'paste'), disabled: !app.clip },
-        { label: 'Export…', onClick: () => bus.emit('cmd', 'export') },
-        'sep',
-        { label: 'Remove from library', onClick: () => lib.removeSelected() },
-      ], { x: e.clientX, y: e.clientY }); };
+      c.oncontextmenu = (e) => { e.preventDefault(); tileMenu(it, { x: e.clientX, y: e.clientY }); };
+      // phone: press and hold opens the same menu
+      c.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'touch') return;
+        const sx = e.clientX, sy = e.clientY; clearTimeout(held);
+        held = setTimeout(() => { held = 0; tileMenu(it, { x: sx, y: sy }); }, 550);
+      });
+      c.addEventListener('pointermove', (e) => { if (held && Math.hypot(e.clientX - lastX(e), e.clientY - lastY(e)) > 8) { clearTimeout(held); held = 0; } });
+      for (const t of ['pointerup', 'pointercancel']) c.addEventListener(t, () => { clearTimeout(held); held = 0; });
       cells.append(c);
       if (it.thumb) lib.drawThumb(cv, it, 'contain'); else { const sp = document.createElement('span'); sp.className = 'spin'; sp.textContent = '…'; c.append(sp); }
     }
     if (!vis.length) { const p = document.createElement('p'); p.className = 'gempty'; p.textContent = app.items.length ? 'No photos match this filter.' : 'No photos yet. Add some from the menu.'; cells.append(p); }
   }
+  let held = 0, startX = 0, startY = 0;
+  const lastX = () => startX, lastY = () => startY;
+  function tileMenu(it, at) {
+    if (!app.sel.has(it.id)) { app.sel = new Set([it.id]); render(); }
+    const n = app.sel.size;
+    menu([
+      { label: 'Open', onClick: () => open(it) },
+      'sep',
+      { label: 'Pick', kb: 'P', onClick: () => lib.setFlag(1) }, { label: 'Reject', kb: 'X', onClick: () => lib.setFlag(-1) }, { label: 'Unflag', kb: 'U', onClick: () => lib.setFlag(0) },
+      'sep',
+      { label: 'Copy settings', onClick: () => bus.emit('cmd', 'copy') }, { label: 'Paste settings', onClick: () => bus.emit('cmd', 'paste'), disabled: !app.clip },
+      { label: n > 1 ? `Export ${n} photos…` : 'Export…', onClick: () => bus.emit('cmd', 'export') },
+      'sep',
+      { label: n > 1 ? `Remove ${n} from library…` : 'Remove from library…', onClick: () => lib.confirmRemoveSelected() },
+    ], at);
+  }
   function onDown(e, it) {
     if (e.button === 2) return;
+    startX = e.clientX; startY = e.clientY;
     const vis = visibleItems(true), i = vis.indexOf(it);
     if (e.metaKey || e.ctrlKey) { app.sel.has(it.id) ? app.sel.delete(it.id) : app.sel.add(it.id); anchor = it.id; }
     else if (e.shiftKey && anchor != null) {
@@ -114,6 +130,7 @@ export function createGrid(host) {
       return true;
     }
     if (e.key === 'Enter' || e.key === 'e' || e.key === 'E') { open(vis[i]); return true; }
+    if (e.key === 'Delete' || e.key === 'Backspace') { if (!app.sel.size && vis[i]) app.sel = new Set([vis[i].id]); lib.confirmRemoveSelected(); return true; }
     if (e.key === 'Escape') { hide(); return true; }
     if (e.key === 'a' && (e.metaKey || e.ctrlKey)) { app.sel = new Set(vis.map((x) => x.id)); render(); return true; }
     return false;

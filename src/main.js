@@ -211,6 +211,7 @@ $('btnMenu').onclick = () => menu([
   { label: 'Copy settings', kb: 'Ctrl+Shift+C', onClick: copySettings },
   { label: 'Paste settings', kb: 'Ctrl+Shift+V', onClick: pasteSettings },
   { label: 'Reset all edits', onClick: resetAll },
+  { label: 'Remove photo from library…', onClick: () => { const it = curItem(); if (!it) return; app.sel = new Set([it.id]); lib.confirmRemoveSelected(); } },
   'sep',
   ...(document.body.classList.contains('m') ? [] : [{ label: 'Solo mode (one section open)', check: isSolo(), onClick: () => setSolo(!isSolo()) }]),
   { label: 'Show filmstrip', check: !$('strip').classList.contains('hidden'), onClick: () => $('btnFilm').click() },
