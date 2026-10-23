@@ -24,6 +24,9 @@ Browser-based RAW + JPEG editor (plain JavaScript, WebGL2, LibRaw via WebAssembl
 - On iOS the file pickers for presets and LUTs must not set `accept` (iOS greys out .xmp, .lrtemplate, .cube).
 - The floating histogram belongs to the edit screen only (hidden over the grid and with no photo open).
 
+- Sync data is validated: `validPreset()` in `src/merge.js` drops anything that is not a real preset, on the server and on devices. Never write test data to a real server's `/api/presets` (a bad test once broke the presets panel on every synced device).
+- iOS sends no `dblclick` for touches and zooms the page on double taps: controls that reset on double tap (sliders, the colour wheel) detect the second tap themselves, and touch-only controls cancel `touchstart`.
+
 ## Testing
 - No real browser automation here; headless Firefox works. Use a fresh `--profile` dir every run. `src/devtest.js` (dev only) loads `?test=/img.png&script=...` and posts screenshots/logs to the Vite middleware `/__shot` (needs the `SHOT_DIR` env var). Sample images live in `dev/`.
 - Do not use anyone's personal photos in tests, screenshots or commits.
