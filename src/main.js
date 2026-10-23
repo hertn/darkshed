@@ -105,7 +105,7 @@ $('btnReset').onclick = () => { const it = curItem(); if (it && isEdited(it)) { 
 const refreshReset = () => { const it = curItem(); $('btnReset').disabled = !it || !isEdited(it); };
 bus.on('history', refreshReset); bus.on('select', refreshReset); bus.on('badges', refreshReset);
 $('btnGrid').onclick = () => grid.toggle();
-bus.on('grid', (on) => $('btnGrid').classList.toggle('on', on));
+bus.on('grid', (on) => { $('btnGrid').classList.toggle('on', on); document.body.classList.toggle('grid-on', on); });
 $('btnUndo').onclick = () => undo();
 $('btnRedo').onclick = () => redo();
 $('btnCompare').onclick = () => { app.split = app.split == null ? 0.5 : null; refreshTop(); invalidateAll(); };
