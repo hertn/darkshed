@@ -370,3 +370,22 @@ body.m .btn.m-only { display: inline-flex !important; }
 
 /* touch screens: no double-tap zoom of the page (the photo has its own zoom) */
 @media (pointer: coarse) { html, body, button, .panel, .dock { touch-action: manipulation; } }
+
+/* presets: category chips + one horizontal strip at a time (phone), so nothing needs a long vertical scroll */
+.pchips { display: none; }
+@media (max-width: 860px) {
+  .pchips { display: flex; gap: 6px; overflow-x: auto; padding: 4px 14px 8px; scrollbar-width: none; }
+  .pchips::-webkit-scrollbar { display: none; }
+  .pchip { flex: 0 0 auto; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--line2); background: var(--panel2); color: var(--fg2); font-size: 12px; white-space: nowrap; }
+  .pchip.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+  body.m .pgroup { display: none; }
+  body.m .pgroup.cur { display: block; }
+  body.m .pgroup .group-title { display: none; }
+  body.m .pgroup .preset-grid { display: flex; gap: 10px; overflow-x: auto; padding: 2px 14px 8px; scrollbar-width: none; }
+  body.m .pgroup .preset-grid::-webkit-scrollbar { display: none; }
+  body.m .pgroup .preset { flex: 0 0 82px; }
+  body.m .preset .del { opacity: .85; }
+  body.m .pane[data-pane=presets] .pane-title, body.m .pane[data-pane=presets] .pane-sub { display: none; }
+  body.m .pane[data-pane=presets] .btn-row { overflow-x: auto; flex-wrap: nowrap; padding: 6px 14px 4px; scrollbar-width: none; }
+  body.m .pane[data-pane=presets] .btn-row .btn { flex: 0 0 auto; }
+}

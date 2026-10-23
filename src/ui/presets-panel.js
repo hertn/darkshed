@@ -56,8 +56,14 @@ export function createPresetsPanel({ editSync }) {
   let thumbsFor = null, building = 0;
   const tiles = [];
 
-  function section(title) { const t = document.createElement('div'); t.className = 'group-title'; t.textContent = title; body.append(t); const g = document.createElement('div'); g.className = 'preset-grid'; body.append(g); return g; }
-  function hint(text) { const p = document.createElement('p'); p.className = 'hint'; p.style.margin = '0 16px 8px'; p.textContent = text; body.append(p); }
+  const groupList = [];     // { title, wrap }: the phone shows one group at a time, picked with chips
+  let curWrap = null;
+  function section(title) {
+    const wrap = document.createElement('div'); wrap.className = 'pgroup'; body.append(wrap); curWrap = wrap; groupList.push({ title, wrap });
+    const t = document.createElement('div'); t.className = 'group-title'; t.textContent = title; wrap.append(t);
+    const g = document.createElement('div'); g.className = 'preset-grid'; wrap.append(g); return g;
+  }
+  function hint(text) { const p = document.createElement('p'); p.className = 'hint'; p.style.margin = '0 16px 8px'; p.textContent = text; (curWrap || body).append(p); }
   function tile(grid, name, state, onClick, { onDelete, onMenu, active } = {}) {
     const d = document.createElement('div'); d.className = 'preset' + (active ? ' on' : ''); d.title = name;
     const c = document.createElement('canvas'); c.width = 96; c.height = 96;
@@ -72,7 +78,7 @@ export function createPresetsPanel({ editSync }) {
   }
 
   async function rebuild() {
-    body.textContent = ''; tiles.length = 0;
+    body.textContent = ''; tiles.length = 0; groupList.length = 0; curWrap = null;
     const it = curItem();
     if (!it) { body.innerHTML = '<p class="hint">Open a photo to preview looks.</p>'; return; }
     showAmount();
@@ -98,7 +104,7 @@ export function createPresetsPanel({ editSync }) {
     const names = Object.keys(mine).filter((n) => n !== '__deleted');
     const groups = new Map();
     for (const n of names) { const g = mine[n].group || 'My presets'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(n); }
-    if (!groups.size) { const t = document.createElement('div'); t.className = 'group-title'; t.textContent = 'My presets'; body.append(t); hint('Use "Save" to keep the current look, or "Import…" for Lightroom presets.'); }
+    if (!groups.size) { section('My presets').remove(); hint('Use "Save" to keep the current look, or "Import…" for Lightroom presets.'); }
     for (const [g, list] of [...groups].sort((a, b) => (a[0] === 'My presets' ? -1 : b[0] === 'My presets' ? 1 : a[0].localeCompare(b[0])))) {
       const grid = section(g);
       for (const n of list.sort((a, b) => a.localeCompare(b))) {
@@ -115,7 +121,25 @@ export function createPresetsPanel({ editSync }) {
         });
       }
     }
+    buildChips(base);
     renderThumbs();
+  }
+
+  // phone: a row of category chips; only the chosen category is shown, as one horizontal strip
+  let activeGroup = '';
+  function showGroup(title) {
+    activeGroup = title;
+    for (const g of groupList) g.wrap.classList.toggle('cur', g.title === title);
+    for (const c of chips.children) c.classList.toggle('on', c.dataset.g === title);
+    chips.querySelector('.on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }
+  const chips = document.createElement('div'); chips.className = 'pchips';
+  function buildChips(base) {
+    chips.textContent = '';
+    for (const g of groupList) { const b = document.createElement('button'); b.className = 'pchip'; b.dataset.g = g.title; b.textContent = g.title; b.onclick = () => showGroup(g.title); chips.append(b); }
+    body.prepend(chips);
+    const activeTile = groupList.find((g) => g.wrap.querySelector('.preset.on'))?.title;
+    showGroup(groupList.some((g) => g.title === activeGroup) ? activeGroup : (activeTile || groupList[0]?.title || ''));
   }
 
   function renderThumbs() {
