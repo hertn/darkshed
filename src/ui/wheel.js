@@ -45,12 +45,19 @@ export function createWheel({ onInput, onCommit }) {
     if (sat > 0.02) hue = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
     draw(); onInput(Math.round(hue) % 360, Math.round(sat * 100));
   }
-  let down = false;
-  cv.addEventListener('pointerdown', (e) => { down = true; try { cv.setPointerCapture(e.pointerId); } catch {} pick(e); });
+  let down = false, lastTap = 0, lastX = 0, lastY = 0;
+  const reset = () => { sat = 0; draw(); onInput(Math.round(hue), 0); onCommit(); };
+  // double tap / double click resets the point to the centre. Detected by hand: iOS sends no dblclick for touches and zooms the page instead
+  cv.addEventListener('pointerdown', (e) => {
+    const now = performance.now();
+    if (now - lastTap < 350 && Math.hypot(e.clientX - lastX, e.clientY - lastY) < 30) { lastTap = 0; down = false; reset(); return; }
+    lastTap = now; lastX = e.clientX; lastY = e.clientY;
+    down = true; try { cv.setPointerCapture(e.pointerId); } catch {} pick(e);
+  });
+  cv.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
   cv.addEventListener('pointermove', (e) => { if (down) pick(e); });
   const up = () => { if (down) { down = false; onCommit(); } };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  cv.addEventListener('dblclick', () => { sat = 0; draw(); onInput(Math.round(hue), 0); onCommit(); });
   draw();
   return { el: cv, set(h, s) { hue = h; sat = s; draw(); } };
 }
