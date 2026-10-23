@@ -1,0 +1,10 @@
+services:
+  darkshed:
+    build: .
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    environment:
+      # optional: require this token for preset / LUT sync (enter it under Menu > Sync & settings)
+      DARKSHED_TOKEN: ""
+    volumes:
+      - ./data:/data
