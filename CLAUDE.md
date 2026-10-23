@@ -17,6 +17,13 @@ Browser-based RAW + JPEG editor (plain JavaScript, WebGL2, LibRaw via WebAssembl
 - Page zoom is disabled on touch screens on purpose.
 - No live demo on GitHub Pages (decided: not worth risking the offline cache).
 
+## UI patterns worth keeping consistent
+- Item menus (presets, grid thumbnails, filmstrip, category chips): a small "⋯" button (hover on desktop, always visible on touch), press and hold (550 ms) on touch, and right-click on desktop. Destructive actions (delete preset or LUT, remove photo) always ask first.
+- Presets replace each other: `revertPrevious()` in `src/ui/presets-panel.js` undoes what the last preset changed before the next one applies, so a color preset never inherits B&W leftovers.
+- The phone presets panel shows category chips with one horizontal strip at a time instead of a long vertical list.
+- On iOS the file pickers for presets and LUTs must not set `accept` (iOS greys out .xmp, .lrtemplate, .cube).
+- The floating histogram belongs to the edit screen only (hidden over the grid and with no photo open).
+
 ## Testing
 - No real browser automation here; headless Firefox works. Use a fresh `--profile` dir every run. `src/devtest.js` (dev only) loads `?test=/img.png&script=...` and posts screenshots/logs to the Vite middleware `/__shot` (needs the `SHOT_DIR` env var). Sample images live in `dev/`.
 - Do not use anyone's personal photos in tests, screenshots or commits.
