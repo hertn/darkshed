@@ -1,0 +1,25 @@
+# DarkShed: notes for working on this repo
+
+Browser-based RAW + JPEG editor (plain JavaScript, WebGL2, LibRaw via WebAssembly). See README.md for what it does.
+
+## Commands
+- `npm run dev`: dev server on :5173, reachable from a phone on the same Wi-Fi (edits show instantly).
+- `npm run build`: production build into `dist/`; `npm start` serves it plus the preset/LUT sync API (`server/index.mjs`).
+
+## Where things are
+- `src/gl.js` renderer (shaders, strip-based full-res export), `src/export.js` export, `src/jpeg.js` own JPEG encoder (no canvas size limit on iOS).
+- `src/mobile.js` + the `body.m` rules in `src/style.css` are the phone layout (fixed photo, bottom dock, fixed-height sheet).
+- `src/ui/about.js` About text and credits. Colors are CSS variables at the top of `src/style.css` (60/30/10 palette, safelight red accent). The logo is the "D" in `public/favicon.svg` and `src/ui/logo.js`.
+
+## Decisions to keep
+- Photos never leave the device; the server only stores presets and LUTs.
+- iOS home-screen app: keep `apple-mobile-web-app-status-bar-style` = `black` (with `black-translucent` iOS 26 left a gap under the dock).
+- Page zoom is disabled on touch screens on purpose.
+- No live demo on GitHub Pages (decided: not worth risking the offline cache).
+
+## Testing
+- No real browser automation here; headless Firefox works. Use a fresh `--profile` dir every run. `src/devtest.js` (dev only) loads `?test=/img.png&script=...` and posts screenshots/logs to the Vite middleware `/__shot` (needs the `SHOT_DIR` env var). Sample images live in `dev/`.
+- Do not use anyone's personal photos in tests, screenshots or commits.
+
+## Releasing
+Push to `main`. GitHub Actions builds the Docker image `ghcr.io/hertn/darkshed:latest`; hosts running the compose file update from it (Watchtower).
