@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141211">
+  <meta name="apple-mobile-web-app-title" content="DarkShed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" href="/icon-192.png">
+  <title>DarkShed</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="tb-left">
+        <button class="ib" id="btnMenu" title="Menu"></button>
+        <button class="ib" id="btnGrid" title="Grid view (G)"></button>
+        <span class="logo" id="logo" title="About DarkShed"></span>
+        <span class="brand">Dark<b>Shed</b></span>
+      </div>
+      <div class="tb-center"><span id="photoName"></span><span id="photoCount"></span></div>
+      <div class="tb-right">
+        <button class="ib m-only" id="btnReset" title="Reset all edits to the original"></button>
+        <button class="ib" id="btnUndo" title="Undo (Ctrl/Cmd+Z)"></button>
+        <button class="ib" id="btnRedo" title="Redo (Ctrl/Cmd+Shift+Z)"></button>
+        <span class="vsep"></span>
+        <button class="ib" id="btnCompare" title="Before / after (\)"></button>
+        <button class="ib" id="btnBefore" title="Hold to see the original"></button>
+        <span class="vsep"></span>
+        <button class="btn primary" id="btnExport"><span id="btnExportIcon"></span>Export</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="stage">
+        <div class="view" id="view">
+          <canvas id="cv"></canvas>
+          <canvas id="ov"></canvas>
+          <div class="empty" id="empty">
+            <div class="empty-card">
+              <div class="empty-icon" id="emptyIcon"></div>
+              <h2>Open photos to start editing</h2>
+              <p>RAF, DNG, JPEG, PNG, HEIC… You can also drop files anywhere on this window.</p>
+              <label class="btn primary big">Add photos<input id="fileEmpty" type="file" multiple accept=".raf,.dng,.cr2,.cr3,.nef,.arw,.orf,.rw2,image/*" hidden></label>
+            </div>
+          </div>
+          <div class="hud" id="hud"></div>
+          <div class="toolbar-float" id="floatBar"></div>
+        </div>
+        <div class="filmstrip" id="strip"></div>
+        <footer class="bottombar">
+          <div class="bb-left">
+            <button class="chip-btn" id="zfit" title="Fit (Z)">Fit</button>
+            <button class="chip-btn" id="z100" title="100% (Z)">100%</button>
+            <button class="ib sm" id="zout" title="Zoom out (-)"></button>
+            <span id="zlabel" class="zlabel"></span>
+            <button class="ib sm" id="zin" title="Zoom in (+)"></button>
+          </div>
+          <div class="bb-center">
+            <span class="stars" id="stars"></span>
+            <button class="ib sm" id="flagPick" title="Pick (P)"></button>
+            <button class="ib sm" id="flagReject" title="Reject (X)"></button>
+          </div>
+          <div class="bb-right">
+            <button class="ib sm" id="btnFilm" title="Show / hide filmstrip"></button>
+          </div>
+        </footer>
+      </section>
+      <aside class="panel" id="panel"></aside>
+      <nav class="rail" id="rail"></nav>
+      <nav class="dock" id="dock"></nav>
+    </main>
+  </div>
+  <div id="menuRoot"></div>
+  <div id="modalRoot"></div>
+  <div id="toast"></div>
+  <script>if (location.search.indexOf("test=") >= 0 || location.search.indexOf("after=") >= 0) { window.__PRESERVE = true; window.__hold = new Image(); var hm = /[?&]hold=(\d+)/.exec(location.search); window.__hold.src = "/__hold?ms=" + (hm ? hm[1] : 9000) + "&t=" + Date.now(); }</script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
