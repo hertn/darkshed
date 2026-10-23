@@ -24,8 +24,10 @@ export function createGrid(host) {
   let cursor = null;       // item id the keyboard cursor sits on
   let anchor = null;
 
-  size.value = lsGet('gridSize', '180');
-  const applySize = () => { cells.style.setProperty('--cell', size.value + 'px'); lsSet('gridSize', size.value); };
+  // phones start with two columns (about 150 px tiles) instead of one huge one; the size is remembered per kind of screen
+  const phone = matchMedia('(max-width: 860px)').matches, SIZE_KEY = phone ? 'gridSizeM' : 'gridSize';
+  size.value = lsGet(SIZE_KEY, phone ? '150' : '180');
+  const applySize = () => { cells.style.setProperty('--cell', size.value + 'px'); lsSet(SIZE_KEY, size.value); };
   size.oninput = applySize; applySize();
 
   const seg = root.querySelector('.seg');

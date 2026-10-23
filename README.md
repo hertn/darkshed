@@ -16,6 +16,33 @@ A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/edit.png" width="860" alt="Editing a photo: Light and Color sliders, histogram and filmstrip">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/masks.png" width="425" alt="A radial mask with its own adjustments">
+  <img src="docs/screenshots/presets.png" width="425" alt="Presets and Fujifilm-inspired looks">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/grid.png" width="860" alt="Grid view for culling, with ratings and flags">
+</p>
+
+On the phone (same app, a layout built for touch):
+
+<p align="center">
+  <img src="docs/screenshots/phone-edit.png" width="230" alt="Phone: editing with the tool dock at the bottom">
+  <img src="docs/screenshots/phone-color.png" width="230" alt="Phone: Color panel">
+  <img src="docs/screenshots/phone-grid.png" width="230" alt="Phone: grid view for culling">
+</p>
+
+*The photos above are generated illustrations, made for the screenshots.*
+
+---
+
 ## What it does
 
 - **Edit:** Light, Curves, Color (white balance with presets, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion), Calibration, B&W, LUTs, profiles.
