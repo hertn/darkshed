@@ -16,7 +16,20 @@ A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on
 
 ---
 
-## Install (Docker)
+## What it does
+
+- **Edit:** Light, Curves, Color (white balance with presets, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion), Calibration, B&W, LUTs, profiles.
+- **Local tools:** crop and straighten, spot removal (heal and clone), masks (linear, radial, brush, luminance and color range, with add, subtract and intersect).
+- **Library:** multiple photos with a filmstrip and a grid for culling (ratings, flags, filters).
+- **Presets:** import `.xmp`, `.lrtemplate` and `.zip` packs (with an Amount slider), export as `.xmp`. A few Fujifilm-inspired looks are built in.
+- **Export:** JPEG, PNG, WebP or 16-bit TIFF, with resize, output sharpening, sRGB or Display P3, and batch export as a ZIP.
+- **Safety net:** undo and redo, autosave, and copies of your open photos kept on the device so work survives an app reload. Stored copies clean themselves up (7 days unused, 1 GB cap by default; changeable in Settings).
+
+The Fujifilm-style looks are approximations built from the sliders, not Fujifilm's own film simulations.
+
+## Install
+
+### With Docker (recommended)
 
 You need a machine with [Docker](https://docs.docker.com/engine/install/) and the Compose plugin.
 
@@ -50,6 +63,18 @@ That's it. Your presets are saved in the `data` folder next to the compose file.
 
 **Update by hand:** `docker compose pull && docker compose up -d`
 
+### Without Docker
+
+Needs Node.js 20 or newer.
+
+```bash
+npm install
+npm run build
+npm start        # http://localhost:8080
+```
+
+Environment variables: `DARKSHED_PORT` (default 8080), `DARKSHED_DATA` (default `./data`), `DARKSHED_TOKEN` (optional sync password).
+
 ## Use it on iPhone and iPad
 
 1. Open the address in **Safari**.
@@ -67,29 +92,6 @@ Good to know:
 Sync is automatic when you open the app from your own server, and **optional**: everything also works on a single device without it.
 
 Under **Menu → Sync & settings** you can see the status, enter a token if you set one, or point the app at a different server address. Photos and per-photo edits are never sent to the server.
-
-## What it does
-
-- **Edit:** Light, Curves, Color (white balance with presets, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion), Calibration, B&W, LUTs, profiles.
-- **Local tools:** crop and straighten, spot removal (heal and clone), masks (linear, radial, brush, luminance and color range, with add, subtract and intersect).
-- **Library:** multiple photos with a filmstrip and a grid for culling (ratings, flags, filters).
-- **Presets:** import `.xmp`, `.lrtemplate` and `.zip` packs (with an Amount slider), export as `.xmp`. A few Fujifilm-inspired looks are built in.
-- **Export:** JPEG, PNG, WebP or 16-bit TIFF, with resize, output sharpening, sRGB or Display P3, and batch export as a ZIP.
-- **Safety net:** undo and redo, autosave, and copies of your open photos kept on the device so work survives an app reload. Stored copies clean themselves up (7 days unused, 1 GB cap by default; changeable in Settings).
-
-The Fujifilm-style looks are approximations built from the sliders, not Fujifilm's own film simulations.
-
-## Without Docker
-
-Needs Node.js 20 or newer.
-
-```bash
-npm install
-npm run build
-npm start        # http://localhost:8080
-```
-
-Environment variables: `DARKSHED_PORT` (default 8080), `DARKSHED_DATA` (default `./data`), `DARKSHED_TOKEN` (optional sync password).
 
 ## Development
 
