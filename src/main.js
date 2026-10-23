@@ -290,3 +290,8 @@ if (!new URLSearchParams(location.search).get('test')) lib.restore().catch((e) =
 
 // dev-only headless test hook
 if (import.meta.env.DEV) import('./devtest.js');
+
+// touch screens: block the browser's own pinch zoom of the page; pinching the photo still zooms the photo
+if (matchMedia('(pointer: coarse)').matches) {
+  for (const t of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false });
+}
