@@ -4,6 +4,7 @@ import { clone } from '../params.js';
 import { BUILTIN, applyLook, applyPreset, blendParams, previewParams, userPresets, loadUserPresets, savePreset, deletePreset, renamePreset, movePreset, renameGroup, updatePreset, importPresetFiles, listLuts, saveLut, getLut } from '../looks.js';
 import { toXmp } from '../lrpreset.js';
 import { zip } from '../zip.js';
+import { validPreset } from '../merge.js';
 import { parseCube } from '../lut.js';
 import { makeSmall } from '../decode.js';
 import { slider } from './slider.js';
@@ -130,7 +131,7 @@ export function createPresetsPanel({ editSync }) {
     } else hint('Import .cube files to use them as looks.');
 
     const mine = userPresets();
-    const names = Object.keys(mine).filter((n) => n !== '__deleted');
+    const names = Object.keys(mine).filter((n) => n !== '__deleted' && validPreset(mine[n]));
     const groups = new Map();
     for (const n of names) { const g = mine[n].group || 'My presets'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(n); }
     if (!groups.size) { section('My presets', false); hint('Use "Save" to keep the current look, or "Import…" for Lightroom presets.'); }
@@ -262,7 +263,7 @@ export function createPresetsPanel({ editSync }) {
     download(new Blob([xml], { type: 'application/rdf+xml' }), safeName(name) + '.xmp');
   }
   async function exportAll() {
-    const mine = userPresets(), names = Object.keys(mine).filter((n) => n !== '__deleted');
+    const mine = userPresets(), names = Object.keys(mine).filter((n) => n !== '__deleted' && validPreset(mine[n]));
     if (!names.length) { toast('No presets to export yet'); return; }
     const files = names.map((n) => ({ name: `${safeName(mine[n].group || 'My presets')}/${safeName(n)}.xmp`, blob: new Blob([toXmp(n, mine[n].patch, { group: mine[n].group || 'User Presets' })], { type: 'application/rdf+xml' }) }));
     download(await zip(files), 'darkshed-presets.zip');
@@ -306,7 +307,7 @@ export function createPresetsPanel({ editSync }) {
   }
   function moveDialog(name, current) {
     const mine = userPresets();
-    const cats = [...new Set(Object.keys(mine).filter((n) => n !== '__deleted').map((n) => mine[n].group || 'My presets'))].sort((a, b) => (a === 'My presets' ? -1 : b === 'My presets' ? 1 : a.localeCompare(b)));
+    const cats = [...new Set(Object.keys(mine).filter((n) => n !== '__deleted' && validPreset(mine[n])).map((n) => mine[n].group || 'My presets'))].sort((a, b) => (a === 'My presets' ? -1 : b === 'My presets' ? 1 : a.localeCompare(b)));
     if (!cats.includes('My presets')) cats.unshift('My presets');
     const NEW = '\u0000new';
     let sel, inp;

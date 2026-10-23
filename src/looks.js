@@ -5,6 +5,7 @@ import { bus } from './app.js';
 import { ALL_PARAMS } from './params.js';
 import { parsePresetText } from './lrpreset.js';
 import { unzip } from './zip.js';
+import { validPreset } from './merge.js';
 
 // Keys a "look" owns. Applying a look resets these, then applies its patch; exposure, white balance and detail stay yours.
 const KEEP = new Set(['exposure', 'temp', 'tint', 'sharpAmount', 'sharpRadius', 'sharpMasking', 'nrLuma', 'nrColor', 'caRemove', 'defringePurple', 'defringeGreen', 'caRed', 'caBlue', 'distortion', 'lensVignette']);
@@ -132,6 +133,7 @@ let loaded = false;
 export const userPresets = () => user;
 export async function loadUserPresets() {
   try { user = (await idb.get('kv', 'presets')) || {}; } catch { user = {}; }
+  for (const n of Object.keys(user)) if (n !== '__deleted' && !validPreset(user[n])) delete user[n];     // stray entries must never break the panel
   loaded = true; bus.emit('presets');
   return user;
 }
@@ -181,7 +183,8 @@ export async function updatePreset(name, params) {
 export async function replaceUserPresets(obj) { user = obj; await persist(); }
 export async function mergeUserPresets(obj) {
   if (!loaded) await loadUserPresets();
-  user = obj; try { await idb.set('kv', 'presets', user); } catch {} bus.emit('presets');
+  user = Object.fromEntries(Object.entries(obj || {}).filter(([n, v]) => n === '__deleted' || validPreset(v)));
+  try { await idb.set('kv', 'presets', user); } catch {} bus.emit('presets');
 }
 
 // ---------- LUT library ----------
