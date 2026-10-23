@@ -175,8 +175,8 @@ select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; bor
 .btn-row { display: flex; gap: 6px; padding: 6px 16px; flex-wrap: wrap; }
 
 /* presets */
-.preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 4px 14px 10px; }
-.preset { cursor: pointer; text-align: center; font-size: 11px; color: var(--fg2); position: relative; }
+.preset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 4px 14px 10px; }
+.preset { min-width: 0; cursor: pointer; text-align: center; font-size: 11px; color: var(--fg2); position: relative; }
 .preset canvas { width: 100%; aspect-ratio: 1; border-radius: 4px; display: block; background: var(--well); border: 2px solid transparent; }
 .preset.on canvas { border-color: var(--acc); }
 .preset span { display: block; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
