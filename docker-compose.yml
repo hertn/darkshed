@@ -1,6 +1,7 @@
 services:
   darkshed:
-    build: .
+    image: ghcr.io/hertn/darkshed:latest   # pulled from GitHub; no build needed
+    # build: .                             # uncomment to build from this folder instead
     restart: unless-stopped
     ports: ["8080:8080"]
     environment:

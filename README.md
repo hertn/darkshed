@@ -18,7 +18,12 @@ npm start                   # http://localhost:8080
 
 Environment variables: `DARKSHED_PORT` (8080), `DARKSHED_DATA` (`./data`), `DARKSHED_TOKEN` (optional shared secret for the sync API).
 
-Docker: `docker compose up -d --build` (data lives in `./data`).
+Docker (easiest): download `docker-compose.yml` from this repo, then run
+```bash
+docker compose pull
+docker compose up -d
+```
+The image comes from `ghcr.io/hertn/darkshed` and is rebuilt automatically on every change. Presets and LUTs live in `./data`. To update later, run the same two commands again.
 
 Put it behind HTTPS (a reverse proxy, Tailscale serve, Cloudflare tunnel…): service workers, "Add to Home Screen" and the iOS share sheet need a secure context.
 
