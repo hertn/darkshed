@@ -250,6 +250,8 @@ select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; bor
 .cell .spin { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--mut); }
 .gempty { grid-column: 1 / -1; color: var(--mut); text-align: center; padding: 60px 0; }
 .view.gridding #cv, .view.gridding #ov { visibility: hidden; }
+/* the floating histogram belongs to the edit screen only: not over the grid, and not with no photo open */
+.view.gridding > .hist-wrap, .view:has(> .empty:not(.hidden)) > .hist-wrap { display: none !important; }
 
 /* histogram, profile and Auto / B&W / Reset stay visible while the sections scroll */
 .edit-head { position: sticky; top: 0; z-index: 6; background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: 0 6px 10px -8px #000a; }
