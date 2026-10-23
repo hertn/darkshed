@@ -67,6 +67,11 @@ export function createGrid(host) {
       });
       c.addEventListener('pointermove', (e) => { if (held && Math.hypot(e.clientX - lastX(e), e.clientY - lastY(e)) > 8) { clearTimeout(held); held = 0; } });
       for (const t of ['pointerup', 'pointercancel']) c.addEventListener(t, () => { clearTimeout(held); held = 0; });
+      const more = document.createElement('button'); more.className = 'more'; more.textContent = '⋯'; more.title = 'More…';
+      more.onpointerdown = (e) => e.stopPropagation();           // do not select / long-press through the button
+      more.onclick = (e) => { e.stopPropagation(); const r = more.getBoundingClientRect(); tileMenu(it, { x: r.left, y: r.bottom }); };
+      more.ondblclick = (e) => e.stopPropagation();
+      c.append(more);
       cells.append(c);
       if (it.thumb) lib.drawThumb(cv, it, 'contain'); else { const sp = document.createElement('span'); sp.className = 'spin'; sp.textContent = '…'; c.append(sp); }
     }

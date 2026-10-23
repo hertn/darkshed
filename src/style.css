@@ -179,8 +179,12 @@ select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; bor
 .preset canvas { width: 100%; aspect-ratio: 1; border-radius: 4px; display: block; background: var(--well); border: 2px solid transparent; }
 .preset.on canvas { border-color: var(--acc); }
 .preset span { display: block; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.preset .more { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: #000b; color: #fff; font-size: 14px; line-height: 1; letter-spacing: -1px; cursor: pointer; opacity: 0; padding: 0; }
-.preset:hover .more, .preset .more:focus-visible { opacity: 1; }
+/* the small "⋯" button on presets and photo thumbnails: shows on hover, and always on touch screens */
+.preset .more, .cell .more, .tile .more { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: #000b; color: #fff; font-size: 14px; line-height: 1; letter-spacing: -1px; cursor: pointer; opacity: 0; padding: 0; z-index: 2; }
+.cell .more { width: 26px; height: 26px; top: 6px; right: 6px; font-size: 16px; }
+.tile .more { width: 20px; height: 20px; font-size: 13px; }
+.preset:hover .more, .cell:hover .more, .tile:hover .more, .more:focus-visible { opacity: 1; }
+@media (hover: none) { .preset .more, .cell .more, .tile .more { opacity: .9; } }
 .group-title { padding: 10px 16px 4px; color: var(--mut); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
 
 /* masks */
@@ -389,3 +393,5 @@ body.m .btn.m-only { display: inline-flex !important; }
   body.m .pane[data-pane=presets] .btn-row .btn { flex: 0 0 auto; }
 }
 .cell { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* make room for the "⋯" button */
+.cell .edited { right: 38px; } .tile .edited { right: 28px; }
