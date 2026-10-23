@@ -2,50 +2,103 @@
 
 <img src="public/icon-192.png" width="96" align="right" alt="DarkShed logo">
 
-*A darkroom, but in a shed.* A free, Lightroom-style RAW + JPEG editor that runs in your browser, on your own machine, on Mac, iPad and iPhone.
+*A darkroom, but in a shed.*
 
-**Why it exists:** Lightroom costs money, and the other vibe-coded "Lightroom killers" were desktop-only or tied to specific hardware. DarkShed is one web app that works on whatever you own.
+A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on Mac, iPad and iPhone. You host it yourself, on a home server or any machine that runs Docker.
 
-A Lightroom-style RAW + JPEG editor that runs entirely in the browser. Decoding (LibRaw / WASM) and all editing (WebGL2) happen on your own device, so it uses your Mac's, iPad's or iPhone's GPU. The server only stores your **presets and LUTs**. It never sees a photo.
+- **Private:** editing happens on your own device (decoding with LibRaw/WebAssembly, rendering on the GPU). Photos are never uploaded, not even to your server.
+- **Synced presets:** your presets and LUTs sync between all your devices through your own server.
+- **Made for RAW:** Fujifilm RAF, DNG, CR2/3, NEF, ARW and more, plus JPEG, PNG and HEIC. Imports and exports Lightroom presets.
 
-## Run it
+*Why it exists:* Lightroom costs money, and the other vibe-coded "Lightroom killers" were desktop-only or tied to specific hardware. DarkShed is one web app that works on whatever you own.
+
+> **Status: beta (0.9).** Tested on desktop browsers and on an iPhone 16 Pro. Expect rough edges.
+
+---
+
+## Install (Docker)
+
+You need a machine with [Docker](https://docs.docker.com/engine/install/) and the Compose plugin.
+
+**1. Download the compose file**
+
+```bash
+mkdir darkshed && cd darkshed
+curl -O https://raw.githubusercontent.com/hertn/darkshed/main/docker-compose.yml
+```
+
+**2. Start it**
+
+```bash
+docker compose up -d
+```
+
+**3. Open it**
+
+Go to `http://<your-server-ip>:8080` in a browser.
+
+That's it. Your presets are saved in the `data` folder next to the compose file.
+
+**Things you might need to change in `docker-compose.yml`:**
+
+| What | How |
+|---|---|
+| Port 8080 is already used | Change the left number in `ports: ["8080:8080"]`, for example `"8082:8080"` |
+| Require a password for syncing | Set `DARKSHED_TOKEN` to any secret, then enter it in **Menu → Sync & settings** |
+| Fedora / RHEL (SELinux) | Already handled (`:z` on the data folder) |
+| Automatic updates | Already included: the bundled Watchtower checks hourly. Delete the `watchtower` block if you already run Watchtower or prefer to update by hand |
+
+**Update by hand:** `docker compose pull && docker compose up -d`
+
+## Use it on iPhone and iPad
+
+1. Open the address in **Safari**.
+2. Tap **Share → Add to Home Screen**.
+3. Open DarkShed from the new icon. It runs full-screen like an app.
+
+Good to know:
+
+- **Add to Home Screen works over plain `http://`** on a home network. For access from outside your home, put it behind HTTPS (for example `tailscale serve --bg 8080`, a Cloudflare tunnel, or a reverse proxy like Caddy). HTTPS is also needed for offline use.
+- If you change the status bar or icon settings later, delete the Home Screen icon and add it again. iOS remembers the old ones.
+- iOS limits exports to about 16 megapixels (a Safari limit). Open RAW files through the **Files** picker. The Photos picker may hand over a converted JPEG.
+
+## Syncing presets
+
+Sync is automatic when you open the app from your own server, and **optional**: everything also works on a single device without it.
+
+Under **Menu → Sync & settings** you can see the status, enter a token if you set one, or point the app at a different server address. Photos and per-photo edits are never sent to the server.
+
+## What it does
+
+- **Edit:** Light, Curves, Color (white balance with presets, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion), Calibration, B&W, LUTs, profiles.
+- **Local tools:** crop and straighten, spot removal (heal and clone), masks (linear, radial, brush, luminance and color range, with add, subtract and intersect).
+- **Library:** multiple photos with a filmstrip and a grid for culling (ratings, flags, filters).
+- **Presets:** import `.xmp`, `.lrtemplate` and `.zip` packs (with an Amount slider), export as `.xmp`. A few Fujifilm-inspired looks are built in.
+- **Export:** JPEG, PNG, WebP or 16-bit TIFF, with resize, output sharpening, sRGB or Display P3, and batch export as a ZIP.
+- **Safety net:** undo and redo, autosave, and copies of your open photos kept on the device so work survives an app reload. Stored copies clean themselves up (7 days unused, 1 GB cap by default; changeable in Settings).
+
+The Fujifilm-style looks are approximations built from the sliders, not Fujifilm's own film simulations.
+
+## Without Docker
+
+Needs Node.js 20 or newer.
 
 ```bash
 npm install
 npm run build
-npm start                   # http://localhost:8080
+npm start        # http://localhost:8080
 ```
 
-Environment variables: `DARKSHED_PORT` (8080), `DARKSHED_DATA` (`./data`), `DARKSHED_TOKEN` (optional shared secret for the sync API).
+Environment variables: `DARKSHED_PORT` (default 8080), `DARKSHED_DATA` (default `./data`), `DARKSHED_TOKEN` (optional sync password).
 
-Docker (easiest): download `docker-compose.yml` from this repo, then run
+## Development
+
 ```bash
-docker compose pull
-docker compose up -d
+npm install
+npm run dev      # http://localhost:5173, also reachable from your phone on the same Wi-Fi
 ```
-The image comes from `ghcr.io/hertn/darkshed` and is rebuilt automatically on every change. Presets and LUTs live in `./data`. Updates are automatic: the bundled Watchtower container checks for a new image every hour and restarts DarkShed with it (delete the `watchtower` block in the compose file to turn this off, then update by hand with the same two commands).
 
-Put it behind HTTPS (a reverse proxy, Tailscale serve, Cloudflare tunnel…): service workers, "Add to Home Screen" and the iOS share sheet need a secure context.
-
-On iPhone / iPad: open the site in Safari → Share → **Add to Home Screen**. It then runs full-screen and works offline after the first load.
-
-Development: `npm run dev`.
-
-## What it does
-
-- RAW (RAF, DNG, CR2/3, NEF, ARW…) and JPEG / PNG / HEIC editing, multiple photos with a filmstrip and a grid / cull view (ratings, pick / reject flags, filters, sorting).
-- Edit panel: Light, Curves, Color (white balance with presets for RAW, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion, vignetting), B&W, LUTs, Profile dropdown.
-- Crop / straighten / rotate / flip, spot removal (heal / clone), masks (linear, radial, brush, luminance range, color range, combined with add / subtract / intersect, local adjustments incl. texture / clarity / dehaze / sharpness).
-- **Lightroom presets:** import `.xmp`, `.lrtemplate` and `.zip` preset packs (settings apply like Lightroom, with an Amount slider), export presets as `.xmp`.
-- Undo / redo, auto-saved edits (per photo, in the browser), copy / paste settings, before / after.
-- Full-resolution export: JPEG / PNG / WebP / 16-bit TIFF, resize, output sharpening, sRGB or Display P3 (RAW), EXIF kept, export presets, batch export as ZIP.
-- Presets and LUTs sync through the server.
-
-## Notes
-
-- Edits are keyed by file name + size + modified time and stored in the browser's IndexedDB.
-- On iOS, exports are capped at ~16 MP (Safari's canvas limit). Pick RAFs through the **Files** picker; the Photos picker may hand over a converted JPEG.
-- The built-in Fujifilm-style looks are approximations built from the sliders, not Fujifilm's own film simulations.
+Plain JavaScript with no framework. Image processing is WebGL2 shaders; the server (`server/index.mjs`) is one Node file with no dependencies and only stores presets and LUTs.
 
 ## License and credits
 
