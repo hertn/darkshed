@@ -264,7 +264,7 @@ select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; bor
   html, body { overflow: hidden; height: 100%; position: fixed; inset: 0; width: 100%; }
   #app { display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
   .topbar { flex: none; height: var(--topbar); grid-template-columns: auto 1fr auto; padding: 0 6px; gap: 2px; }
-  .brand, #photoCount, .vsep { display: none; }
+  .brand, .logo, #photoCount, .vsep { display: none; }   /* About stays in the menu */
   .tb-center { max-width: none; text-align: left; padding: 0 6px; }
   #btnExport { padding: 7px 10px; font-size: 12px; }
   #btnExportIcon { margin-right: -2px; }
