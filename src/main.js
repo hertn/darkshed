@@ -290,3 +290,17 @@ if (!new URLSearchParams(location.search).get('test')) lib.restore().catch((e) =
 
 // dev-only headless test hook
 if (import.meta.env.DEV) import('./devtest.js');
+
+// dev only: report the layout measurements to the dev server so a phone can be debugged remotely
+if (import.meta.env.DEV) {
+  const report = () => {
+    const box = (id) => { const e = document.getElementById(id) || document.querySelector(id); if (!e) return '-'; const r = e.getBoundingClientRect(); return `${Math.round(r.top)}→${Math.round(r.bottom)} (h${Math.round(r.height)})`; };
+    const cs = (id, p) => { const e = document.getElementById(id); return e ? getComputedStyle(e)[p] : '-'; };
+    const txt = `window ${innerWidth}×${innerHeight} screen ${screen.width}×${screen.height} standalone ${matchMedia('(display-mode: standalone)').matches}\n` +
+      `app ${box('app')}  topbar ${box('.topbar')}  stage ${box('.stage')}  sheet ${box('.sheet')}  dock ${box('dock')}\n` +
+      `dock padding-bottom ${cs('dock', 'paddingBottom')} dock height css ${cs('dock', 'height')} app height css ${cs('app', 'height')} app position ${cs('app', 'position')} bottom ${cs('app', 'bottom')}\n` +
+      `body bg ${getComputedStyle(document.body).backgroundColor} sheet-h ${getComputedStyle(document.body).getPropertyValue('--sheet-h')} t=${new Date().toLocaleTimeString()}`;
+    fetch('/__shot?name=phone-live', { method: 'POST', body: txt }).catch(() => {});
+  };
+  setTimeout(report, 1500); addEventListener('resize', () => setTimeout(report, 400));
+}
