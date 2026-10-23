@@ -173,7 +173,8 @@ export function createPresetsPanel({ editSync }) {
     }
     body.prepend(chips);
     const activeTile = groupList.find((g) => g.wrap.querySelector('.preset.on'))?.title;
-    showGroup(groupList.some((g) => g.title === activeGroup) ? activeGroup : (activeTile || groupList[0]?.title || ''));
+    const firstMine = groupList.find((g) => g.mine)?.title;      // with presets of your own, open those first
+    showGroup(groupList.some((g) => g.title === activeGroup) ? activeGroup : (activeTile || firstMine || groupList[0]?.title || ''));
   }
   function openCategoryMenu(title, anchor) { menu([{ label: 'Rename category…', onClick: () => renameCategoryDialog(title) }], anchor); }
 
