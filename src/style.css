@@ -498,3 +498,10 @@ kbd { display: inline-block; min-width: 22px; padding: 2px 6px; text-align: cent
 
 /* grid: vertical scrolling only, so a double tap opens the photo instead of zooming the page */
 .grid-view, .grid-body, .cells, .cell { touch-action: pan-y; }
+
+/* loading spinner over the photo while it opens */
+.loadbox { position: absolute; inset: 0; z-index: 7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 0 24px; text-align: center; background: #0e0d0c99; color: var(--fg2); font-size: 13px; pointer-events: none; }
+.loadbox[hidden] { display: none; }
+.loadbox i { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line2); border-top-color: var(--acc); animation: loadspin .8s linear infinite; }
+@keyframes loadspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .loadbox i { animation-duration: 2.4s; } }

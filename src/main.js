@@ -154,7 +154,17 @@ bus.on('select', (it) => {
 });
 bus.on('library', refreshTop);
 bus.on('filter', refreshTop);
-bus.on('loading', (msg) => { const h = $('hud'); if (msg) { h.textContent = msg; h.classList.add('show'); } else updateHud(); });
+// Opening a photo can take a while (RAW decoding), so a spinner with the current step shows over the photo. It waits a moment first,
+// so quick switches between photos already in memory do not flash it.
+{
+  const box = document.createElement('div'); box.className = 'loadbox'; box.hidden = true; box.setAttribute('role', 'status');
+  const ring = document.createElement('i'), txt = document.createElement('span'); box.append(ring, txt); $('view').append(box);
+  let timer = 0;
+  bus.on('loading', (msg) => {
+    if (msg) { txt.textContent = msg; if (box.hidden && !timer) timer = setTimeout(() => { timer = 0; box.hidden = false; }, 200); }
+    else { clearTimeout(timer); timer = 0; box.hidden = true; updateHud(); }
+  });
+}
 
 // ---------- files ----------
 const fileInput = document.createElement('input');
