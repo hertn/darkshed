@@ -41,7 +41,7 @@ export function createProfilesPanel() {
     const cur = it.params.baseProfile || '';
     for (const [label, v] of BASE_PROFILES) {
       const d = document.createElement('div'); d.className = 'preset' + (v === cur ? ' on' : ''); d.title = NOTES[v];
-      const c = document.createElement('canvas'); c.width = 96; c.height = 72;
+      const c = document.createElement('canvas'); c.width = 96; c.height = 96;
       const s = document.createElement('span'); s.textContent = label;
       d.append(c, s);
       d.onclick = () => choose(v, label);
