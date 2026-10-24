@@ -139,7 +139,10 @@ function syncProfile() {
 // RAW photos show the Temp slider in Kelvin (as a RAW editor does); JPEGs keep the plain -100..100 scale
 function syncTempUnits() {
   const w = widgets.temp, wb = app.loaded?.info?.wb, it = curItem(); if (!w) return;
-  if (wb && it && isRaw(it.file)) w.setUnits((v) => `${tempToKelvin(wb, v)}`, (t) => kelvinToTemp(wb, parseFloat(t)));
+  if (wb && it && isRaw(it.file)) {
+    const K = (v) => Math.round(tempToKelvin(wb, v) / 50) * 50;        // always in steps of 50 K
+    w.setUnits((v) => `${K(v)}`, (t) => kelvinToTemp(wb, parseFloat(t), true), (v) => kelvinToTemp(wb, K(v), true));
+  }
   else w.setUnits();
 }
 
