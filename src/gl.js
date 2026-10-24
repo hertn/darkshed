@@ -121,8 +121,10 @@ uniform vec3 uGrd[4];       // shadow, mid, high, global: (hue 0..1, sat 0..1, l
 uniform vec2 uGrdBB;        // blending, balance
 uniform vec4 uTn;           // slider strengths (see tuning.js): wb temp, wb tint, highlights, highlights start
 uniform float uGrdK;
+uniform vec4 uGt;           // grading: luminance strength, zone falloff at blending 0 and 100
+uniform vec2 uMk;           // shadow/highlight mask: share of the brightest channel (vs luma); white balance: share of luminance kept constant
 uniform vec2 uWb;           // blue per temp, green per temp
-uniform vec2 uTn4;          // vibrance, saturation strength
+uniform vec3 uTn4;          // vibrance, saturation strength
 uniform vec4 uTn2;          // exposure, contrast, shadows, shadows range
 uniform vec4 uTn3;          // whites, blacks, highlights fade-out, shadows lift
 uniform float uLutAmt, uLutSize, uLensVig, uCalTint;
@@ -133,7 +135,8 @@ in vec2 vUv;
 out vec4 o;
 ${MASK_FN}
 
-const float CEN[8] = float[8](0.0, 30.0, 60.0, 120.0, 180.0, 240.0, 270.0, 300.0);
+uniform float CEN[8];       // hue centre of each HSL band (degrees)
+uniform vec4 uHk;           // HSL: hue degrees at 100, saturation, luminance strength, window shape (0 = triangle, 1 = smooth)
 
 vec3 enc(vec3 c) {
   c = max(c, 0.0);
@@ -166,17 +169,18 @@ float curveAt(float v, int ch) {
 // linear-light part of an adjustment set: white balance, exposure (+ highlight shoulder), shadows / highlights
 vec3 toneLin(vec3 c, vec4 A, vec4 B) {
   vec3 wb = exp2(vec3(B.z * uTn.x, B.z * uWb.y - B.w * uTn.y, -B.z * uWb.x));
-  wb /= luma(wb);
+  wb /= mix(1.0, luma(wb), uMk.y);
   c *= wb;
   float ex = A.x * uTn2.x;
-  float W = exp2(max(ex, 0.0));
+  float W = exp2(max(ex, 0.0)) * mix(1.0, max(1.0, max(wb.r, max(wb.g, wb.b))), uTn4.z);
   c *= exp2(ex);
   const float KNEE = 0.5;
   float a = (W - 1.0) / (1.0 - KNEE);
   vec3 t = clamp((c - KNEE) / max(W - KNEE, 1e-4), 0.0, 1.0);
   vec3 sh = KNEE + (1.0 - KNEE) * t * (1.0 + a) / (1.0 + a * t);
   c = mix(c, sh, step(KNEE, c));
-  float le = luma(enc(c));
+  vec3 ec = enc(c);
+  float le = mix(luma(ec), max(ec.r, max(ec.g, ec.b)), uMk.x);
   float ms = 1.0 - smoothstep(0.0, uTn2.w, le);
   float mh = smoothstep(uTn.w, 1.0, le) * (1.0 - smoothstep(uTn3.z, 1.0, le));
   c *= exp2(A.w * uTn2.z * ms);
@@ -206,17 +210,19 @@ vec3 colorAdj(vec3 p, vec4 C) {
 vec3 grade(vec3 p) {
   float l = luma(clamp(p, 0.0, 1.0));
   float l2 = clamp(l + uGrdBB.y * 0.4, 0.0, 1.0);
-  float k = mix(4.0, 1.0, uGrdBB.x);
+  float k = mix(uGt.y, uGt.z, uGrdBB.x);
   float w[4];
   w[0] = pow(1.0 - l2, k);
   w[1] = pow(max(1.0 - abs(2.0 * l2 - 1.0), 0.0), k);
   w[2] = pow(l2, k);
   w[3] = 1.0;
+  float gl0 = clamp(luma(p), 0.0, 1.0);
+  float edge = smoothstep(0.0, max(uGt.w, 1e-4), gl0) * smoothstep(0.0, max(uGt.w, 1e-4), 1.0 - gl0);
   for (int i = 0; i < 4; i++) {
     vec3 g = uGrd[i];
     vec3 tint = hsv2rgb(vec3(g.x, 1.0, 1.0));
-    p += (tint - luma(tint)) * g.y * w[i] * uGrdK;
-    p += g.z * w[i] * 0.25;
+    p += (tint - luma(tint)) * g.y * w[i] * uGrdK * edge;
+    p += g.z * w[i] * uGt.x;
   }
   return p;
 }
@@ -267,12 +273,13 @@ void main() {
       if (d < -180.0) d += 360.0;
       float width = d >= 0.0 ? nextC - cc : cc - prevC;
       float wt = max(0.0, 1.0 - abs(d) / width);
+      wt = mix(wt, wt * wt * (3.0 - 2.0 * wt), uHk.w);
       dh += wt * uHsl[i].x; ds += wt * uHsl[i].y; dl += wt * uHsl[i].z;
     }
     float sw = smoothstep(0.02, 0.2, hsv.y);
-    hsv.x = fract(hsv.x + dh * 30.0 / 360.0 * sw + 1.0);
-    hsv.y = clamp(hsv.y * (1.0 + ds * sw), 0.0, 1.0);
-    p = hsv2rgb(hsv) * (1.0 + dl * 0.5 * sw);
+    hsv.x = fract(hsv.x + dh * uHk.x / 360.0 * sw + 1.0);
+    hsv.y = clamp(hsv.y * (1.0 + ds * uHk.y * sw), 0.0, 1.0);
+    p = hsv2rgb(hsv) * (1.0 + dl * uHk.z * sw);
   }
   if (uBw) p = vec3(luma(clamp(p, 0.0, 1.0)));
   if (uGrdOn) p = grade(p);
@@ -839,6 +846,8 @@ export class Renderer {
       hsl[i * 3 + j] = v; if (v) hslOn = true;
     }));
     gl.uniform3fv(p.u('uHsl'), hsl);
+    gl.uniform1fv(p.u('CEN'), TUNE.hsC);
+    gl.uniform4f(p.u('uHk'), TUNE.hsH, TUNE.hsS, TUNE.hsL, TUNE.hsM);
     gl.uniform1i(p.u('uHslOn'), hslOn ? 1 : 0);
     const grd = new Float32Array(12);
     let grdOn = false;
@@ -851,8 +860,10 @@ export class Renderer {
     gl.uniform2f(p.u('uGrdBB'), par.grade_blend / 100, par.grade_balance / 100);
     gl.uniform4f(p.u('uTn'), TUNE.wbT, TUNE.wbN, TUNE.hlK, TUNE.hlLo);
     gl.uniform1f(p.u('uGrdK'), TUNE.grdK);
+    gl.uniform4f(p.u('uGt'), TUNE.gdL, TUNE.gdA, TUNE.gdB, TUNE.gdF);
+    gl.uniform2f(p.u('uMk'), TUNE.msK, TUNE.wbL);
     gl.uniform2f(p.u('uWb'), TUNE.wbB, TUNE.wbC);
-    gl.uniform2f(p.u('uTn4'), TUNE.vbK, TUNE.saK);
+    gl.uniform3f(p.u('uTn4'), TUNE.vbK, TUNE.saK, TUNE.wbS);
     gl.uniform4f(p.u('uTn2'), TUNE.exK, TUNE.ctK, TUNE.shK, TUNE.shHi);
     gl.uniform4f(p.u('uTn3'), TUNE.whK, TUNE.blK, TUNE.hlTop, TUNE.shLift);
     gl.uniform1i(p.u('uGrdOn'), grdOn ? 1 : 0);
