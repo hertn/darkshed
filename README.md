@@ -24,7 +24,7 @@ A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on
     <td width="50%"><img src="docs/screenshots/masks.png" alt="A radial mask with its own adjustments"><br><sub><b>Masks.</b> Radial, linear, brush and range masks.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/presets.png" alt="Presets and Fujifilm-inspired looks"><br><sub><b>Presets.</b> Built-in looks and Lightroom presets.</sub></td>
+    <td width="50%"><img src="docs/screenshots/presets.png" alt="Presets: built-in looks, your own presets and LUTs, each previewed on the photo"><br><sub><b>Presets.</b> Built-in looks, imported presets and LUTs, previewed on your photo.</sub></td>
     <td width="50%"><img src="docs/screenshots/grid.png" alt="Grid view for culling, with ratings and flags"><br><sub><b>Grid.</b> Culling with ratings and flags.</sub></td>
   </tr>
 </table>
@@ -33,26 +33,28 @@ The same app on a phone, with a layout built for touch:
 
 <table>
   <tr>
-    <td width="33%"><img src="docs/screenshots/phone-edit.png" alt="Phone: editing with the tool dock at the bottom"><br><sub><b>Edit</b></sub></td>
-    <td width="33%"><img src="docs/screenshots/phone-color.png" alt="Phone: Color panel"><br><sub><b>Color</b></sub></td>
-    <td width="33%"><img src="docs/screenshots/phone-grid.png" alt="Phone: grid view for culling"><br><sub><b>Grid</b></sub></td>
+    <td width="25%"><img src="docs/screenshots/phone-edit.png" alt="Phone: editing with the tool dock at the bottom"><br><sub><b>Edit</b></sub></td>
+    <td width="25%"><img src="docs/screenshots/phone-color.png" alt="Phone: Color panel"><br><sub><b>Color</b></sub></td>
+    <td width="25%"><img src="docs/screenshots/phone-presets.png" alt="Phone: presets and looks"><br><sub><b>Presets</b></sub></td>
+    <td width="25%"><img src="docs/screenshots/phone-grid.png" alt="Phone: grid view for culling"><br><sub><b>Grid</b></sub></td>
   </tr>
 </table>
 
-*The photos are generated illustrations, made for these screenshots.*
+*Photos by [Hert Niks](https://www.pexels.com/@hert/) on Pexels.*
 
 ---
 
 ## What it does
 
-- **Edit:** Light, Curves, Color (white balance with presets, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion), Calibration, B&W, LUTs, profiles.
+- **Edit:** Light, Curves, Color (white balance with presets, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion), Calibration, B&W and LUTs.
+- **RAW profiles:** a Profiles tab (RAW files only) with a preview of each: Standard, Camera Matching (copies the look of the JPEG your camera stored in the file, so it works for any camera), Neutral, Vivid, Landscape and Portrait. RAW photos get a base tone curve fitted to common cameras, so they open with contrast instead of flat.
 - **Local tools:** crop and straighten, spot removal (heal and clone), masks (linear, radial, brush, luminance and color range, with add, subtract and intersect).
 - **Library:** multiple photos with a filmstrip and a grid for culling (ratings, flags, filters).
-- **Presets:** import `.xmp`, `.lrtemplate` and `.zip` packs (with an Amount slider), export as `.xmp`. A few Fujifilm-inspired looks are built in.
+- **Presets:** search, save your own, import `.xmp`, `.lrtemplate` and `.zip` packs and `.cube` LUTs, export as `.xmp`. An Amount slider fades a preset in and out, tapping an applied preset again removes it, and presets replace each other instead of stacking. A few Fujifilm-inspired **Looks** are built in; they keep your exposure and white balance.
 - **Export:** JPEG, PNG, WebP or 16-bit TIFF, with resize, output sharpening, sRGB or Display P3, and batch export as a ZIP.
 - **Safety net:** undo and redo, autosave, and copies of your open photos kept on the device so work survives an app reload. Stored copies clean themselves up (7 days unused, 1 GB cap by default; changeable in Settings).
 
-The Fujifilm-style looks are approximations built from the sliders, not Fujifilm's own film simulations.
+The Fujifilm-style looks are approximations built from the sliders, not Fujifilm's own film simulations. RAW rendering and the sliders are tuned to resemble Lightroom, but they are not an exact match.
 
 ## Install
 
