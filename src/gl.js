@@ -24,10 +24,11 @@ in vec2 aPos;
 uniform vec2 uFit;
 uniform float uZoom;
 uniform vec2 uPan;
+uniform vec2 uBand;       // exports draw one band of rows at a time: first row (0..1 of the output height) and share of the height
 out vec2 vUv;
 void main() {
   vUv = aPos * 0.5 + 0.5;
-  vUv.y = 1.0 - vUv.y;
+  vUv.y = uBand.x + (1.0 - vUv.y) * uBand.y;
   gl_Position = vec4(aPos * uFit * uZoom + uPan, 0.0, 1.0);
 }`;
 
@@ -932,7 +933,7 @@ export class Renderer {
   }
 
   /** viewport: [x, y, w, h] in canvas px. tex: which pass-1 result to read. */
-  passFinish(state, bypass, { fit = true, viewport = null, tex = this.fboTex, outFull = null, fullScale = null, overlay = -1, size = null, outSharp = 0, target = null } = {}) {
+  passFinish(state, bypass, { fit = true, viewport = null, band = [0, 1], tex = this.fboTex, outFull = null, fullScale = null, overlay = -1, size = null, outSharp = 0, target = null } = {}) {
     const gl = this.gl, p = this.finish, par = state.p, geo = this.geo;
     gl.useProgram(p);
     gl.bindVertexArray(this.quadVao);
@@ -957,6 +958,7 @@ export class Renderer {
     gl.uniform2f(p.u('uFit'), fx, fy);
     gl.uniform1f(p.u('uZoom'), z);
     gl.uniform2f(p.u('uPan'), px, py);
+    gl.uniform2f(p.u('uBand'), band[0], band[1]);
     const U = {
       uSharp: par.sharpAmount / 100, uRadius: par.sharpRadius, uMasking: par.sharpMasking / 100,
       uNrL: par.nrLuma / 100, uNrC: par.nrColor / 100,
@@ -1073,8 +1075,7 @@ export class Renderer {
     const buf = new Float32Array(outW * rows * 4);
     for (let top = 0; top < outH; top += rows) {
       const n = Math.min(rows, outH - top);
-      const yb = outH - top - n;                                   // framebuffer rows are bottom-up
-      this.passFinish(state, false, { fit: false, size: [this.imgW, this.imgH], fullScale: outW / this.imgW, outFull: [outW, outH], outSharp, target: fbo, viewport: [0, -yb, outW, outH] });
+      this.passFinish(state, false, { fit: false, size: [this.imgW, this.imgH], fullScale: outW / this.imgW, outFull: [outW, outH], outSharp, target: fbo, viewport: [0, 0, outW, n], band: [top / outH, n / outH] });
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       gl.readPixels(0, 0, outW, n, gl.RGBA, gl.FLOAT, buf);
       const out = new Uint16Array(outW * n * 3);
@@ -1105,8 +1106,7 @@ export class Renderer {
     const buf = new Uint8Array(outW * rows * 4), out = new Uint8Array(outW * rows * 4);
     for (let top = 0; top < outH; top += rows) {
       const n = Math.min(rows, outH - top);
-      const yb = outH - top - n;                                   // framebuffer rows are bottom-up
-      this.passFinish(state, false, { fit: false, size: [this.imgW, this.imgH], fullScale: outW / this.imgW, outFull: [outW, outH], outSharp, target: fbo, viewport: [0, -yb, outW, outH] });
+      this.passFinish(state, false, { fit: false, size: [this.imgW, this.imgH], fullScale: outW / this.imgW, outFull: [outW, outH], outSharp, target: fbo, viewport: [0, 0, outW, n], band: [top / outH, n / outH] });
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       gl.readPixels(0, 0, outW, n, gl.RGBA, gl.UNSIGNED_BYTE, buf);
       for (let r = 0; r < n; r++) out.set(buf.subarray((n - 1 - r) * outW * 4, (n - r) * outW * 4), r * outW * 4);   // flip
