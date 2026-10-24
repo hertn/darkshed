@@ -8,7 +8,8 @@ import { createGrading } from './grading.js';
 import { slider } from './slider.js';
 import { icon } from './icons.js';
 import { autoTone, autoWb } from '../analyze.js';
-import { WB_PRESETS, presetValues, asShotKelvin } from '../wb.js';
+import { isRaw } from '../decode.js';
+import { WB_PRESETS, presetValues, asShotKelvin, tempToKelvin, kelvinToTemp } from '../wb.js';
 import { lsGet, lsSet } from '../store.js';
 import { isEdited } from '../library.js';
 import { defaults as paramDefaults, defaultCrop } from '../params.js';
@@ -135,6 +136,13 @@ function syncProfile() {
   if (resetBtn) resetBtn.disabled = !it || !isEdited(it);
 }
 
+// RAW photos show the Temp slider in Kelvin (as a RAW editor does); JPEGs keep the plain -100..100 scale
+function syncTempUnits() {
+  const w = widgets.temp, wb = app.loaded?.info?.wb, it = curItem(); if (!w) return;
+  if (wb && it && isRaw(it.file)) w.setUnits((v) => `${tempToKelvin(wb, v)}`, (t) => kelvinToTemp(wb, parseFloat(t)));
+  else w.setUnits();
+}
+
 // ---------- white balance dropdown ----------
 function wbOptions() {
   const info = app.loaded?.info;
@@ -161,6 +169,7 @@ function applyWbChoice(id) {
   sync(); changed({ edit: true }); commit('White balance');
 }
 function syncWb() {
+  syncTempUnits();
   if (!wbSelect) return;
   const opts = wbOptions(), sig = opts.map((o) => o[1]).join('|');
   if (wbSelect.dataset.sig !== sig) {

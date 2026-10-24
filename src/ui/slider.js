@@ -13,7 +13,8 @@ const TRACKS = {
 export function slider(o) {
   const { min, max, step, def } = o;
   const dec = step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
-  const fmt = o.format || ((v) => (v > 0 && min < 0 ? '+' : '') + v.toFixed(dec));
+  const plain = (v) => (v > 0 && min < 0 ? '+' : '') + v.toFixed(dec);
+  let fmt = o.format || plain, parse = o.parse || ((t) => parseFloat(t.replace('+', '')));
   const el = document.createElement('div'); el.className = 'sl';
   const top = document.createElement('div'); top.className = 'sl-top';
   const lab = document.createElement('label');
@@ -57,9 +58,11 @@ export function slider(o) {
   val.addEventListener('focus', () => val.select());
   val.addEventListener('keydown', (e) => { if (e.key === 'Enter') val.blur(); else if (e.key === 'Escape') { paint(); val.blur(); } e.stopPropagation(); });
   val.addEventListener('blur', () => {
-    const n = parseFloat(val.value.replace('+', ''));
+    const n = parse(val.value);
     if (Number.isFinite(n) && clamp(n) !== value) { value = clamp(n); paint(); o.onInput?.(value); o.onChange?.(value); } else paint();
   });
   paint();
-  return { el, def, set(v) { value = v; paint(); }, get: () => value, setTrack(css) { custom = css; paint(); } };
+  return { el, def, set(v) { value = v; paint(); }, get: () => value, setTrack(css) { custom = css; paint(); },
+    /** Show the value in other units (e.g. Kelvin): format(v) -> text, parse(text) -> v. Call with no arguments to go back to plain numbers. */
+    setUnits(format, parser) { fmt = format || plain; parse = parser || ((t) => parseFloat(t.replace('+', ''))); paint(); } };
 }

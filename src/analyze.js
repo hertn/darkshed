@@ -40,7 +40,7 @@ export function wbMatrix(temp, tint) {
 }
 
 /** Temp / tint (-100..100) that make a linear RGB value neutral under the shader's white balance model. */
-export function wbFromLinear([r, g, b]) {
+export function wbFromLinear([r, g, b], precise = false) {
   r = Math.max(r, 1e-4); g = Math.max(g, 1e-4); b = Math.max(b, 1e-4);
   const err = (t, n) => {
     const m = wbMatrix(t, n);
@@ -57,7 +57,7 @@ export function wbFromLinear([r, g, b]) {
     t = Math.max(-1, Math.min(1, t - (e[0] * j11 - e[1] * j01) / det));
     n = Math.max(-1, Math.min(1, n - (j00 * e[1] - j10 * e[0]) / det));
   }
-  const clamp = (x) => Math.max(-100, Math.min(100, Math.round(x * 100)));
+  const clamp = (x) => Math.max(-100, Math.min(100, precise ? x * 100 : Math.round(x * 100)));
   return { temp: clamp(t), tint: clamp(n) };
 }
 
