@@ -53,7 +53,7 @@ export function createPresetsPanel({ editSync }) {
   const amountBox = document.createElement('div');
   const amount = slider({
     label: 'Amount', min: 0, max: 200, step: 1, def: 100, value: 100, format: (v) => String(Math.round(v)),
-    onInput: (v) => { const it = curItem(), st = amountState; if (!it || !st || st.id !== it.id) return; blendParams(it.params, st.base, st.target, v / 100); editSync(); changed({ edit: true }); },
+    onInput: (v) => { const it = curItem(), st = amountState; if (!it || !st || st.id !== it.id) return; blendParams(it.params, st.base, st.target, v / 100); st.cur = clone(it.params); editSync(); changed({ edit: true }); },
     onChange: () => commit('Preset amount'),
   });
   amountBox.append(amount.el); amountBox.style.display = 'none';
@@ -234,17 +234,18 @@ export function createPresetsPanel({ editSync }) {
 
   // ----- applying (remembers the "before" so Amount can blend) -----
   function finishApply(it, base, name) {
-    amountState = { id: it.id, base, target: clone(it.params), name };
+    amountState = { id: it.id, base, target: clone(it.params), cur: clone(it.params), name };
     amount.set(100); showAmount();
     editSync(); changed({ edit: true }); commit(`Preset: ${name}`);
   }
-  /** Presets replace each other: first undo what the previous preset changed on this photo (settings you changed on other sliders stay). */
+  /** Presets replace each other: first undo what the previous preset changed on this photo (anything you changed yourself since stays). */
   function revertPrevious(it) {
     const st = amountState;
     if (!st || st.id !== it.id) return;
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     for (const k of new Set([...Object.keys(st.base), ...Object.keys(st.target)])) {
       if (same(st.base[k], st.target[k])) continue;
+      if (!same(it.params[k], st.cur[k])) continue;          // you moved this slider yourself after applying: your value stays
       if (st.base[k] === undefined) delete it.params[k]; else it.params[k] = clone(st.base[k]);
     }
   }
