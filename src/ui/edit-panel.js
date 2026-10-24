@@ -373,7 +373,7 @@ export function createEditPanel() {
     const rows = PARAMS.filter((p) => p[5] === 'calibration');
     const body = makeSection('calibration', 'Calibration', { open: open.calibration, keys: rows.map((r) => r[0]) });
     const hint = document.createElement('p'); hint.className = 'hint'; hint.style.margin = '2px 16px 4px';
-    hint.textContent = 'Adjusts the camera\'s colour primaries. Many Lightroom presets use it for their colour character.';
+    hint.textContent = 'Adjusts the camera\'s colour primaries. Many presets use it for their colour character.';
     body.append(hint);
     const tracks = {
       calShadowTint: 'tint',
