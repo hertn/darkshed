@@ -57,12 +57,14 @@ export function tempToKelvin(wb, temp) {
   for (let i = 1; i < ts.length; i++) if (ts[i] >= temp) { const f = ts[i] === ts[i - 1] ? 0 : (temp - ts[i - 1]) / (ts[i] - ts[i - 1]); return Math.round((ks[i - 1] + f * K_STEP) / 10) * 10; }
   return ks[ks.length - 1];
 }
-/** Temp slider position (-100..100) for a typed colour temperature. */
-export function kelvinToTemp(wb, K) {
+/** Temp slider position (-100..100) for a colour temperature. */
+export function kelvinToTemp(wb, K, precise = false) {
+  if (K === asShotKelvin(wb)) return 0;
   const { ks, ts } = kTable(wb);
   const x = Math.max(K_MIN, Math.min(K_MAX, K)), i = Math.min(ks.length - 2, Math.floor((x - K_MIN) / K_STEP));
   const f = (x - ks[i]) / K_STEP;
-  return Math.max(-100, Math.min(100, Math.round(ts[i] + f * (ts[i + 1] - ts[i]))));
+  const t = Math.max(-100, Math.min(100, ts[i] + f * (ts[i + 1] - ts[i])));
+  return precise ? Math.round(t * 100) / 100 : Math.round(t);
 }
 
 // tintAdd is in slider units (+ = magenta; Lightroom-scale sliders), correcting for illuminants that sit off the blackbody line

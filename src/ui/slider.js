@@ -38,7 +38,8 @@ export function slider(o) {
     const on = value !== def ? 'var(--acc)' : '#8a8a8a';
     rng.style.setProperty('--tr', `linear-gradient(to right, var(--track) 0 ${a}%, ${on} ${a}% ${b}%, var(--track) ${b}% 100%)`);
   }
-  const clamp = (v) => Math.min(max, Math.max(min, Math.round(v / step) * step));
+  let snap = null;                                  // optional: snaps a value to what the display units allow (Kelvin in 50s)
+  const clamp = (v) => (snap ? snap(Math.min(max, Math.max(min, v))) : Math.min(max, Math.max(min, Math.round(v / step) * step)));
   rng.addEventListener('input', () => { value = clamp(+rng.value); paint(); o.onInput?.(value); });
   rng.addEventListener('change', () => o.onChange?.(value));
   const reset = () => { value = def; paint(); o.onInput?.(value); o.onChange?.(value); };
@@ -64,5 +65,5 @@ export function slider(o) {
   paint();
   return { el, def, set(v) { value = v; paint(); }, get: () => value, setTrack(css) { custom = css; paint(); },
     /** Show the value in other units (e.g. Kelvin): format(v) -> text, parse(text) -> v. Call with no arguments to go back to plain numbers. */
-    setUnits(format, parser) { fmt = format || plain; parse = parser || ((t) => parseFloat(t.replace('+', ''))); paint(); } };
+    setUnits(format, parser, snapper) { fmt = format || plain; parse = parser || ((t) => parseFloat(t.replace('+', ''))); snap = snapper || null; rng.step = snap ? 0.1 : step; paint(); } };
 }
