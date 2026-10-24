@@ -450,7 +450,6 @@ body.m .btn.m-only { display: inline-flex !important; }
 .pgroup .group-title { display: none; }
 .pgroup[hidden], .preset[hidden] { display: none !important; }
 .pane[data-pane=profiles] .preset span { white-space: normal; }
-.pane[data-pane=profiles] .preset canvas { aspect-ratio: 4 / 3; }
 .amount-box { transition: opacity .15s; }
 .amount-box.off { opacity: .35; }
 .pbar { display: flex; gap: 6px; padding: 2px 14px 10px; align-items: center; }
