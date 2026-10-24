@@ -136,7 +136,8 @@ $('stars').addEventListener('click', (e) => { const b = e.target.closest('.star'
 $('flagPick').onclick = () => lib.setFlag(1); $('flagReject').onclick = () => lib.setFlag(-1);
 const filmOn = lsGet('film', '1') === '1';
 $('strip').classList.toggle('hidden', !filmOn); $('btnFilm').classList.toggle('on', filmOn);
-$('btnFilm').onclick = () => { const h = $('strip').classList.toggle('hidden'); $('btnFilm').classList.toggle('on', !h); lsSet('film', h ? '0' : '1'); };
+const toggleFilmstrip = () => { const h = $('strip').classList.toggle('hidden'); $('btnFilm').classList.toggle('on', !h); lsSet('film', h ? '0' : '1'); };
+$('btnFilm').onclick = toggleFilmstrip;
 function refreshMeta() {
   const it = curItem();
   document.querySelectorAll('#stars .star').forEach((s) => s.classList.toggle('on', !!it && +s.dataset.n <= it.rating));
@@ -200,18 +201,68 @@ bus.on('cmd', (c) => {
 $('btnExport').onclick = () => bus.emit('open-export');
 
 // ---------- menu ----------
+// One list feeds the Keyboard shortcuts window (and its search). Keep it in step with the key handler below.
+const MAC = /Mac|iPhone|iPad/.test(navigator.platform || '');
+const MOD = MAC ? '⌘' : 'Ctrl';
+const shortcutList = () => [
+  ['Photos', [
+    ['Next / previous photo', ['→', '←']], ['Grid / cull view', ['G']], ['Show or hide the filmstrip', ['S']],
+    ['Rating', ['0', '–', '5']], ['Pick / reject / unflag', ['P', 'X', 'U']],
+  ]],
+  ['Tools and panels', [
+    ['Edit', ['E']], ['Crop and rotate', ['C']], ['Healing (spot removal)', ['Q']], ['Masking', ['M']], ['Presets', ['L']], ['Profiles (RAW)', ['R']], ['Info', ['I']],
+    ['Fold the open panel away', ['the tool\'s key again']],
+  ]],
+  ['View', [
+    ['Zoom fit / 100%', ['Z']], ['Zoom in / out', ['+', '−']], ['Pan', ['Space', 'drag']], ['Before / after', ['\\']],
+    ...(fsCan ? [['Full screen', ['F']]] : []),
+  ]],
+  ['Editing', [
+    ['Undo / redo', [MOD, 'Z', '/', MOD, 'Shift', 'Z']], ['Copy / paste settings', [MOD, 'Shift', 'C', '/', MOD, 'Shift', 'V']], ['Export', [MOD, 'E']],
+  ]],
+  ['Inside a tool', [
+    ['Masks: show overlay', ['O']], ['Masks: nudge the selected mask', ['↑', '↓', '←', '→']], ['Brush size', ['[', ']']], ['Delete the selected mask or spot', ['Delete']],
+    ['Healing: show spots', ['H']], ['Healing: spot or brush', ['B']], ['Crop: swap orientation (instead of reject)', ['X']],
+  ]],
+  ['In the grid', [
+    ['Move', ['↑', '↓', '←', '→']], ['Open the photo', ['Enter']], ['Select several', ['Shift', 'click']], ['Select all', [MOD, 'A']], ['Remove from DarkShed', ['Delete']],
+  ]],
+];
 function shortcutsModal() {
-  const rows = [
-    ['Undo / redo', 'Ctrl/Cmd + Z / Shift + Z'], ['Before / after', '\\'], ['Next / previous photo', '→ / ←'],
-    ['Zoom fit / 100%', 'Z'], ['Zoom in / out', '+ / −'], ['Rating', '0 – 5'], ['Pick / reject / unflag', 'P / X / U'],
-    ['Grid / cull view', 'G'], ['Full screen (browser)', 'F'], ['Edit / crop / spot removal / masking / presets / profiles / info (press again to fold the panel away)', 'E / C / Q / M / L / R / I'], ['Mask overlay / spot visibility', 'O / H'], ['Healing: spot or brush', 'B'], ['Crop: swap orientation (instead of reject)', 'X'], ['Copy / paste settings', 'Ctrl/Cmd + Shift + C / V'],
-    ['Export', 'Ctrl/Cmd + E'], ['Pan', 'Space + drag'],
-  ];
   modal('Keyboard shortcuts', (body) => {
-    const dl = document.createElement('dl'); dl.className = 'info-grid'; dl.style.gridTemplateColumns = '1fr auto';
-    for (const [a, b] of rows) { const dt = document.createElement('dt'); dt.textContent = a; dt.style.color = 'var(--fg2)'; const dd = document.createElement('dd'); dd.textContent = b; dd.style.color = 'var(--mut)'; dl.append(dt, dd); }
-    body.append(dl);
-    const n = document.createElement('p'); n.className = 'hint'; n.textContent = 'In the grid: arrows move, Enter opens, Shift / Ctrl-click selects several, then P / X / U or 0–5 apply to all selected.'; body.append(n);
+    const search = document.createElement('input'); search.type = 'search'; search.className = 'sc-search'; search.placeholder = 'Search shortcuts…'; search.setAttribute('aria-label', 'Search shortcuts');
+    const list = document.createElement('div'); list.className = 'sc-list';
+    const none = document.createElement('p'); none.className = 'hint'; none.textContent = 'No shortcut matches.'; none.hidden = true;
+    const groups = shortcutList().map(([title, rows]) => {
+      const g = document.createElement('section'); g.className = 'sc-group';
+      const h = document.createElement('h4'); h.textContent = title; g.append(h);
+      const items = rows.map(([label, keys]) => {
+        const row = document.createElement('div'); row.className = 'sc-row';
+        const l = document.createElement('span'); l.textContent = label;
+        const kk = document.createElement('span'); kk.className = 'sc-keys';
+        for (const k of keys) {
+          if (k === '/' || k === '–' || k === 'drag' || k === 'click' || k.length > 8) { const t = document.createElement('i'); t.textContent = k === '/' ? 'or' : k; kk.append(t); }
+          else { const c = document.createElement('kbd'); c.textContent = k; kk.append(c); }
+        }
+        row.append(l, kk); g.append(row);
+        return { row, text: (title + ' ' + label + ' ' + keys.join(' ') + (keys.includes(MOD) ? ' ctrl cmd command' : '')).toLowerCase() };
+      });
+      return { g, items };
+    });
+    groups.forEach(({ g }) => list.append(g));
+    const filter = () => {
+      const q = search.value.trim().toLowerCase(); let any = false;
+      for (const { g, items } of groups) {
+        let n = 0;
+        for (const it of items) { const hit = !q || q.split(/\s+/).every((w) => it.text.includes(w)); it.row.hidden = !hit; if (hit) n++; }
+        g.hidden = !n; if (n) any = true;
+      }
+      none.hidden = any;
+    };
+    search.addEventListener('input', filter);
+    search.addEventListener('keydown', (e) => e.stopPropagation());
+    body.append(search, list, none);
+    setTimeout(() => search.focus(), 50);
   }, { buttons: [{ label: 'Close', primary: true, onClick: (m) => m.close() }] });
 }
 // full screen (like F11): hides the browser's own bars. Not offered where it cannot work (iPhone Safari) or is pointless (installed app).
@@ -263,6 +314,7 @@ addEventListener('keydown', (e) => {
   if (k === 'ArrowRight') lib.step(1);
   else if (k === 'ArrowLeft') lib.step(-1);
   else if (k === 'g' || k === 'G') grid.toggle();
+  else if (k === 's' || k === 'S') toggleFilmstrip();
   else if ((k === 'f' || k === 'F') && fsCan) toggleFullscreen();
   else if (k === '\\') { app.bypass = !app.bypass; $('btnBefore').classList.toggle('on', app.bypass); invalidateAll(); }
   else if (k === 'z' || k === 'Z') zoomToggle();
