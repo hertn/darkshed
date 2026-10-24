@@ -3,6 +3,7 @@ import { Renderer } from './gl.js';
 import { app, curItem, bus, changed, commit, renderState } from './app.js';
 import { makeGeo } from './geometry.js';
 import { samplePatch, wbFromLinear } from './analyze.js';
+import { kelvinFromNeutral } from './wb.js';
 import { patchedHalf, spotSig } from './spots.js';
 
 const $ = (id) => document.getElementById(id);
@@ -285,7 +286,8 @@ function pickWb(x, y) {
   const [sx, sy] = view.pxToSrc(x, y);
   const A = img.width / img.height;
   const rgb = samplePatch(img, Math.min(1, Math.max(0, sx / A)), Math.min(1, Math.max(0, sy)), 3);
-  Object.assign(it.params, wbFromLinear(rgb));
+  const wb = app.loaded?.info?.wb;
+  if (wb) Object.assign(it.params, kelvinFromNeutral(wb, rgb)); else Object.assign(it.params, wbFromLinear(rgb));
   bus.emit('sync-ui');
   changed({ edit: true });
   commit('White balance');

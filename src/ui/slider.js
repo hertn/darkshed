@@ -11,7 +11,7 @@ const TRACKS = {
  * returns { el, set(v), get(), def }
  */
 export function slider(o) {
-  const { step, def } = o;
+  let { step, def } = o;
   let min = o.min, max = o.max;
   const dec = step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
   const plain = (v) => (v > 0 && min < 0 ? '+' : '') + v.toFixed(dec);
@@ -66,5 +66,9 @@ export function slider(o) {
   paint();
   return { el, def, set(v) { value = v; paint(); }, get: () => value, setTrack(css) { custom = css; paint(); },
     /** Show the value in other units (e.g. Kelvin): format(v) -> text, parse(text) -> v. Call with no arguments to go back to plain numbers. */
-    setUnits(format, parser, snapper, range) { fmt = format || plain; parse = parser || ((t) => parseFloat(t.replace('+', ''))); snap = snapper || null; rng.step = snap ? 0.1 : step; min = range ? range[0] : o.min; max = range ? range[1] : o.max; rng.min = min; rng.max = max; paint(); } };
+    setUnits(u) {
+      fmt = u?.format || plain; parse = u?.parse || ((t) => parseFloat(t.replace('+', ''))); snap = u?.snap || null;
+      step = u?.step ?? o.step; def = u?.def ?? o.def; min = u?.range ? u.range[0] : o.min; max = u?.range ? u.range[1] : o.max;
+      rng.min = min; rng.max = max; rng.step = step; paint();
+    } };
 }

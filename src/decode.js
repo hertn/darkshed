@@ -36,6 +36,12 @@ const lutSrgb8 = (() => {
 
 export const ONE = toHalf(1);
 
+/** The camera's colour data needed for Kelvin white balance, or null. */
+function wbFromMeta(meta) {
+  const cd = meta.color_data || {};
+  return cd.cam_mul && cd.cam_mul[1] > 0 && cd.cam_xyz && cd.rgb_cam
+    ? { camMul: cd.cam_mul.slice(0, 3), camXyz: cd.cam_xyz.slice(0, 3).map((r) => r.slice(0, 3)), rgbCam: cd.rgb_cam.slice(0, 3).map((r) => r.slice(0, 3)) } : null;
+}
 export const isRaw = (file) => RAW_EXT.test(file.name);
 
 /** Returns { width, height, half: Uint16Array(RGBA half floats, linear sRGB), info } */
@@ -58,9 +64,7 @@ export async function loadImage(file, onStatus = () => {}) {
         highlight: 0,
       });
       const meta = await raw.metadata(true);
-      const cd = meta.color_data || {};
-      const wbInfo = cd.cam_mul && cd.cam_mul[1] > 0 && cd.cam_xyz && cd.rgb_cam
-        ? { camMul: cd.cam_mul.slice(0, 3), camXyz: cd.cam_xyz.slice(0, 3).map((r) => r.slice(0, 3)), rgbCam: cd.rgb_cam.slice(0, 3).map((r) => r.slice(0, 3)) } : null;
+      const wbInfo = wbFromMeta(meta);
       let exifInfo = null;
       try { const t = await raw.thumbnailData(); if (t && t.format === 'jpeg') exifInfo = extractExif(t.data); } catch {}
       const d = await raw.imageData();
@@ -185,11 +189,11 @@ export async function loadFull(file, { quality = 1, maxDim = 16384, outputColor 
       try {
         onStatus(half ? 'Decoding RAW (reduced size)…' : 'Decoding RAW at full resolution…');
         await raw.open(bytes.slice(), { halfSize: half, useCameraWb: true, outputBps: 16, outputColor, noAutoBright: true, gamm: [1, 1], userQual: quality, highlight: 0 });
-        let exifSeg = null, camera = '';
-        try { const m = await raw.metadata(true); camera = `${m.camera_make || ''} ${m.camera_model || ''}`.trim(); } catch {}
+        let exifSeg = null, camera = '', wb = null;
+        try { const m = await raw.metadata(true); camera = `${m.camera_make || ''} ${m.camera_model || ''}`.trim(); wb = wbFromMeta(m); } catch {}
         try { const t = await raw.thumbnailData(); if (t && t.format === 'jpeg') exifSeg = extractExif(t.data); } catch {}
         const d = await raw.imageData();
-        return { kind: 'raw', rgb16: d.data, width: d.width, height: d.height, colors: d.colors || 3, exifSeg, camera, reduced: half };
+        return { kind: 'raw', rgb16: d.data, width: d.width, height: d.height, colors: d.colors || 3, exifSeg, camera, wb, reduced: half };
       } finally { raw.dispose(); }
     };
     try {

@@ -75,7 +75,7 @@ function subsample(img, maxSamples = 60000) {
 const luma = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
 /** Grey-world style auto white balance on mid-tone, low-saturation-ish pixels. */
-export function autoWb(img) {
+export function autoWbRgb(img) {
   let r = 0, g = 0, b = 0, n = 0;
   for (const p of subsample(img)) {
     const l = luma(p);
@@ -84,8 +84,11 @@ export function autoWb(img) {
     if (mx > 0 && (mx - mn) / mx > 0.6) continue;     // skip strongly coloured pixels
     r += p[0]; g += p[1]; b += p[2]; n++;
   }
-  if (!n) return { temp: 0, tint: 0 };
-  return wbFromLinear([r / n, g / n, b / n]);
+  return n ? [r / n, g / n, b / n] : null;
+}
+export function autoWb(img) {
+  const rgb = autoWbRgb(img);
+  return rgb ? wbFromLinear(rgb) : { temp: 0, tint: 0 };
 }
 
 /**

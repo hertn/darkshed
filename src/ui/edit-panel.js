@@ -7,9 +7,9 @@ import { createHistogram } from './histogram.js';
 import { createGrading } from './grading.js';
 import { slider } from './slider.js';
 import { icon } from './icons.js';
-import { autoTone, autoWb } from '../analyze.js';
+import { autoTone, autoWb, autoWbRgb } from '../analyze.js';
 import { isRaw } from '../decode.js';
-import { WB_PRESETS, presetValues, asShotKelvin, tempToKelvin, kelvinToTemp } from '../wb.js';
+import { WB_PRESETS, presetValues, asShotKelvin, tempToKelvin, posToKelvin, kelvinToPos, kelvinFromNeutral, POS_MAX } from '../wb.js';
 import { lsGet, lsSet } from '../store.js';
 import { isEdited } from '../library.js';
 import { defaults as paramDefaults, defaultCrop } from '../params.js';
@@ -41,7 +41,7 @@ function paramSlider(host, row, opts = {}) {
   const [key, label, min, max, step, , , def] = row;
   const w = slider({
     label: opts.label || label, min, max, step, def, value: P()?.[key] ?? def, track: opts.track, color: opts.color,
-    onInput: (v) => setParam(key, v),
+    onInput: (v) => (opts.set || setParam)(key, v),
     onChange: () => commit(opts.label || label),
   });
   host.append(w.el);
@@ -136,14 +136,24 @@ function syncProfile() {
   if (resetBtn) resetBtn.disabled = !it || !isEdited(it);
 }
 
-// RAW photos show the Temp slider in Kelvin (as a RAW editor does); JPEGs keep the plain -100..100 scale
+// RAW photos set white balance in Kelvin (wbK), as a RAW editor does: the Temp slider runs 2000-50000 K in steps of 50. JPEGs keep temp -100..100.
+const rawWb = () => { const wb = app.loaded?.info?.wb, it = curItem(); return wb && it && isRaw(it.file) ? wb : null; };
+const currentK = (p, wb) => (p.wbK > 0 ? p.wbK : p.temp ? tempToKelvin(wb, p.temp) : asShotKelvin(wb));
+function setTemp(key, v) {
+  const wb = rawWb(), it = curItem();
+  if (!wb || !it) { setParam(key, v); return; }
+  const K = posToKelvin(v);
+  it.params.wbK = K === asShotKelvin(wb) ? 0 : K; it.params.temp = 0;
+  changed({ edit: true }); refresh();
+}
 function syncTempUnits() {
-  const w = widgets.temp, wb = app.loaded?.info?.wb, it = curItem(); if (!w) return;
-  if (wb && it && isRaw(it.file)) {
-    const K = (v) => Math.round(tempToKelvin(wb, v) / 50) * 50;        // always in steps of 50 K
-    w.setUnits((v) => `${K(v)}`, (t) => kelvinToTemp(wb, parseFloat(t), true), (v) => kelvinToTemp(wb, K(v), true));
-  }
-  else w.setUnits();
+  const w = widgets.temp, wb = rawWb(), p = P(); if (!w) return;
+  if (!wb || !p) { w.setUnits(); return; }
+  w.setUnits({
+    format: (v) => `${posToKelvin(v)}`, parse: (t) => kelvinToPos(parseFloat(t)), snap: (v) => kelvinToPos(posToKelvin(v)),
+    range: [0, POS_MAX], step: 1, def: kelvinToPos(asShotKelvin(wb)),
+  });
+  w.set(kelvinToPos(currentK(p, wb)));
 }
 
 // ---------- white balance dropdown ----------
@@ -154,20 +164,25 @@ function wbOptions() {
   opts.push(['custom', 'Custom']);
   return opts;
 }
+// cache the auto result per photo so this stays cheap while sliders move
+function autoValues() {
+  const L = app.loaded, wb = rawWb(); if (!L) return null;
+  if (wb) { const rgb = (L.img._autoRgb ||= autoWbRgb(L.img)); return rgb ? (L.img._autoRaw ||= kelvinFromNeutral(wb, rgb)) : { wbK: 0, temp: 0, tint: 0 }; }
+  return (L.img._autoWb ||= autoWb(L.img));
+}
 function currentWbChoice() {
   const p = P(), info = app.loaded?.info; if (!p) return 'asshot';
-  if (!p.temp && !p.tint) return 'asshot';
-  if (info?.wb) for (const pr of WB_PRESETS) { const v = presetValues(info.wb, pr); if (v.temp === p.temp && v.tint === p.tint) return pr.id; }
-  // cache the auto result per photo so this stays cheap while sliders move
-  const img = app.loaded?.img;
-  if (img) { img._autoWb ||= autoWb(img); if (img._autoWb.temp === p.temp && img._autoWb.tint === p.tint) return 'auto'; }
+  if (!p.temp && !p.tint && !p.wbK) return 'asshot';
+  if (info?.wb) for (const pr of WB_PRESETS) { const v = presetValues(info.wb, pr); if (v.wbK === p.wbK && v.tint === p.tint && !p.temp) return pr.id; }
+  const a = autoValues();
+  if (a && a.temp === p.temp && a.tint === p.tint && (a.wbK || 0) === (p.wbK || 0)) return 'auto';
   return 'custom';
 }
 function applyWbChoice(id) {
   const it = curItem(), L = app.loaded; if (!it || !L) return;
   if (id === 'custom') return;
-  if (id === 'asshot') { it.params.temp = 0; it.params.tint = 0; }
-  else if (id === 'auto') { L.img._autoWb ||= autoWb(L.img); Object.assign(it.params, L.img._autoWb); }
+  if (id === 'asshot') { it.params.temp = 0; it.params.tint = 0; it.params.wbK = 0; }
+  else if (id === 'auto') Object.assign(it.params, { wbK: 0 }, autoValues());
   else { const pr = WB_PRESETS.find((x) => x.id === id); if (pr && L.info.wb) Object.assign(it.params, presetValues(L.info.wb, pr)); }
   sync(); changed({ edit: true }); commit('White balance');
 }
@@ -260,7 +275,7 @@ export function createEditPanel() {
 
   const lightKeys = PARAMS.filter((p) => p[5] === 'light').map((p) => p[0]);
   const colorParams = PARAMS.filter((p) => p[5] === 'color');
-  const colorKeys = [...colorParams.map((p) => p[0]), ...HSL_PARAMS.map((p) => p[0]), 'bw'];
+  const colorKeys = ['wbK', ...colorParams.map((p) => p[0]), ...HSL_PARAMS.map((p) => p[0]), 'bw'];
   const effectsKeys = PARAMS.filter((p) => p[5] === 'effects').map((p) => p[0]);
   const detailKeys = PARAMS.filter((p) => p[5] === 'detail').map((p) => p[0]);
   const open = Object.fromEntries(SECTIONS.map(([id, , o]) => [id, o]));
@@ -300,7 +315,7 @@ export function createEditPanel() {
     wbRow.append(wbLab, wbSelect, pick);
     body.append(wbRow);
     wbSelect.onchange = () => applyWbChoice(wbSelect.value);
-    colorParams.forEach((row) => paramSlider(body, row, { track: ['temp', 'tint', 'vibrance', 'saturation'].includes(row[0]) ? row[0] : undefined }));
+    colorParams.forEach((row) => paramSlider(body, row, { track: ['temp', 'tint', 'vibrance', 'saturation'].includes(row[0]) ? row[0] : undefined, set: row[0] === 'temp' ? setTemp : undefined }));
 
     // HSL
     const mb = makeSub(body, 'mix', 'HSL', { keys: HSL_PARAMS.map((p) => p[0]), parentId: 'color' });

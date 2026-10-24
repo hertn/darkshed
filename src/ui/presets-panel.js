@@ -128,7 +128,7 @@ export function createPresetsPanel({ editSync }) {
     showAmount();
     const base = it ? clone(it.params) : defaults();      // with no photo open the looks are listed without previews
     const rs = it ? renderState(it) : {};                  // thumbnails of a RAW need to know it is one (base curve, camera)
-    const ex = { raw: rs.raw, camera: rs.camera, camFit: rs.camFit };
+    const ex = { raw: rs.raw, camera: rs.camera, camFit: rs.camFit, wbGain: rs.wbGain };
     const lookState = (patch, profile) => { const p = clone(base); applyLook(p, patch, profile); return { p, ...ex }; };
 
     const mine = userPresets();

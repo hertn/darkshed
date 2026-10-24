@@ -1,6 +1,7 @@
 // Central app state: library, per-photo edit state, undo history, event bus.
 import { defaults, defaultCrop, clone, identityCurves, KEY_DEFAULT, migrateMask } from './params.js';
 import { idb } from './store.js';
+import { kelvinGains } from './wb.js';
 
 const listeners = {};
 export const bus = {
@@ -151,5 +152,5 @@ export function renderState(it) {
     }
   }
   const masks = it.masks.filter((m) => m.enabled !== false);
-  return { p, masks, camera: it.camera || '', camFit: it.camFit || null, raw: /\.(raf|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|x3f|raw|3fr|iiq|erf|mrw|kdc|dcr)$/i.test(it.file?.name || '') };
+  return { p, masks, wbGain: it.wb && p.wbK ? kelvinGains(it.wb, p.wbK) : null, camera: it.camera || '', camFit: it.camFit || null, raw: /\.(raf|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|x3f|raw|3fr|iiq|erf|mrw|kdc|dcr)$/i.test(it.file?.name || '') };
 }

@@ -112,6 +112,7 @@ export const defaults = () => ({
   ...KEY_DEFAULT,
   bw: 0,
   profile: '',      // '' | 'b:<built-in look>' | 'l:<lut id>' (what the Profile dropdown shows)
+  wbK: 0,           // RAW only: white balance in Kelvin (0 = as shot); temp stays 0 while this is set
   baseProfile: '',  // RAW only: '' = Standard | 'camera' | 'neutral' | 'vivid' | 'landscape' | 'portrait'
   lut: null,        // id of a LUT from the looks library
   lutAmount: 100,
