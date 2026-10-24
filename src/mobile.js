@@ -10,7 +10,7 @@ const MQ = window.matchMedia('(max-width: 860px)');
 const SECTIONS = [['light', 'Light', 'sun'], ['color', 'Color', 'palette'], ['effects', 'Effects', 'fx'], ['detail', 'Detail', 'detail'], ['optics', 'Optics', 'lens'], ['calibration', 'Calibrate', 'calib']];
 const TITLES = { curves: 'Curves', grading: 'Color grading', hsl: 'HSL' };      // reached from the Light / Color sections, not from the dock
 const PARENT = { curves: 'light', grading: 'color', hsl: 'color' };                // the dock tool each of those belongs to
-const TOOLS = [['crop', 'Crop', 'crop'], ['spots', 'Heal', 'heal'], ['mask', 'Masks', 'mask'], ['presets', 'Presets', 'presets'], ['info', 'Info', 'info']];
+const TOOLS = [['crop', 'Crop', 'crop'], ['spots', 'Heal', 'heal'], ['mask', 'Masks', 'mask'], ['presets', 'Presets', 'presets'], ['profiles', 'Profiles', 'profile'], ['info', 'Info', 'info']];
 
 export function initMobile({ setToolId }) {
   const dock = document.getElementById('dock');

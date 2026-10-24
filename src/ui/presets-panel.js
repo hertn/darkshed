@@ -1,5 +1,5 @@
 // Presets pane: built-in looks, LUTs, user + imported Lightroom presets, each previewed on the current photo.
-import { app, curItem, changed, commit, bus } from '../app.js';
+import { app, curItem, changed, commit, bus, renderState } from '../app.js';
 import { clone, defaults } from '../params.js';
 import { BUILTIN, applyLook, applyPreset, blendParams, previewParams, userPresets, loadUserPresets, savePreset, deletePreset, renamePreset, movePreset, renameGroup, updatePreset, importPresetFiles, listLuts, saveLut, getLut } from '../looks.js';
 import { toXmp } from '../lrpreset.js';
@@ -127,7 +127,9 @@ export function createPresetsPanel({ editSync }) {
     body.textContent = ''; tiles.length = 0; groupList.length = 0; curWrap = null;
     showAmount();
     const base = it ? clone(it.params) : defaults();      // with no photo open the looks are listed without previews
-    const lookState = (patch, profile) => { const p = clone(base); applyLook(p, patch, profile); return { p }; };
+    const rs = it ? renderState(it) : {};                  // thumbnails of a RAW need to know it is one (base curve, camera)
+    const ex = { raw: rs.raw, camera: rs.camera, camFit: rs.camFit };
+    const lookState = (patch, profile) => { const p = clone(base); applyLook(p, patch, profile); return { p, ...ex }; };
 
     const mine = userPresets();
     const names = Object.keys(mine).filter((n) => n !== '__deleted' && validPreset(mine[n]));
@@ -138,7 +140,7 @@ export function createPresetsPanel({ editSync }) {
       const grid = section(g, true);
       for (const n of list.sort((a, b) => a.localeCompare(b))) {
         const pr = mine[n];
-        tile(grid, n, { p: previewParams(base, pr) }, () => applyStored(n, pr), {
+        tile(grid, n, { p: previewParams(base, pr), ...ex }, () => applyStored(n, pr), {
           items: () => [
             { label: 'Apply', onClick: () => applyStored(n, pr) },
             { label: 'Rename…', onClick: () => renameDialog(n) },
@@ -160,7 +162,7 @@ export function createPresetsPanel({ editSync }) {
       const g2 = section('LUTs');
       luts.forEach((l, k) => {
         const p = clone(base); applyLook(p, {}, 'l:' + l.id); p.lut = l.id; p.lutAmount = 100;
-        tile(g2, l.name, { p, lut: lutFull[k] }, () => applyLut(l.id, l.name), {
+        tile(g2, l.name, { p, lut: lutFull[k], ...ex }, () => applyLut(l.id, l.name), {
           active: base.lut === l.id, applyName: `LUT ${l.name}`,
           items: () => [
             { label: 'Apply', onClick: () => applyLut(l.id, l.name) },

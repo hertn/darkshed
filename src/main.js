@@ -7,6 +7,7 @@ import { createCropPanel } from './ui/crop-tool.js';
 import { createMaskPanel } from './ui/mask-tool.js';
 import { createSpotPanel } from './ui/spot-tool.js';
 import { createPresetsPanel } from './ui/presets-panel.js';
+import { createProfilesPanel } from './ui/profiles-panel.js';
 import { createInfoPanel } from './ui/info-panel.js';
 import { getLut } from './looks.js';
 import { createGrid } from './ui/grid.js';
@@ -67,9 +68,10 @@ const panes = {
   spots: createSpotPanel(),
   mask: createMaskPanel(),
   presets: createPresetsPanel({ editSync: () => editSync() }),
+  profiles: createProfilesPanel(),
   info: createInfoPanel(),
 };
-const RAIL = [['edit', 'edit', 'Edit (E)'], ['crop', 'crop', 'Crop & rotate (C)'], ['spots', 'heal', 'Healing (Q)'], ['mask', 'mask', 'Masking (M)'], ['presets', 'presets', 'Presets (P)'], ['info', 'info', 'Info (I)']];
+const RAIL = [['edit', 'edit', 'Edit (E)'], ['crop', 'crop', 'Crop & rotate (C)'], ['spots', 'heal', 'Healing (Q)'], ['mask', 'mask', 'Masking (M)'], ['presets', 'presets', 'Presets (P)'], ['profiles', 'profile', 'Profiles'], ['info', 'info', 'Info (I)']];
 const panel = $('panel'), rail = $('rail');
 for (const [id] of RAIL) panel.append(panes[id].el);
 for (const [id, ic, title] of RAIL) {
