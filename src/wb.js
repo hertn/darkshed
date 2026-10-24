@@ -39,6 +39,32 @@ export function asShotKelvin(wb) {
   return Math.round(best / 50) * 50;
 }
 
+// Kelvin <-> temp slider. The slider value that makes illuminant K look neutral rises with K (warmer picture for a higher K),
+// so a table of that value over K, built once per photo, converts both ways. Photos show Kelvin like a RAW editor does.
+const K_MIN = 2000, K_MAX = 25000, K_STEP = 50;
+function kTable(wb) {
+  if (wb._kt) return wb._kt;
+  const ks = [], ts = [];
+  for (let K = K_MIN; K <= K_MAX; K += K_STEP) { ks.push(K); ts.push(wbFromLinear(whiteUnderAsShot(wb, K), true).temp); }
+  for (let i = 1; i < ts.length; i++) ts[i] = Math.max(ts[i], ts[i - 1]);       // keep it non-decreasing
+  return (wb._kt = { ks, ts });
+}
+/** Colour temperature (K) a temp slider position stands for. */
+export function tempToKelvin(wb, temp) {
+  if (!temp) return asShotKelvin(wb);
+  const { ks, ts } = kTable(wb);
+  if (temp <= ts[0]) return ks[0];
+  for (let i = 1; i < ts.length; i++) if (ts[i] >= temp) { const f = ts[i] === ts[i - 1] ? 0 : (temp - ts[i - 1]) / (ts[i] - ts[i - 1]); return Math.round((ks[i - 1] + f * K_STEP) / 10) * 10; }
+  return ks[ks.length - 1];
+}
+/** Temp slider position (-100..100) for a typed colour temperature. */
+export function kelvinToTemp(wb, K) {
+  const { ks, ts } = kTable(wb);
+  const x = Math.max(K_MIN, Math.min(K_MAX, K)), i = Math.min(ks.length - 2, Math.floor((x - K_MIN) / K_STEP));
+  const f = (x - ks[i]) / K_STEP;
+  return Math.max(-100, Math.min(100, Math.round(ts[i] + f * (ts[i + 1] - ts[i]))));
+}
+
 // tintAdd is in slider units (+ = magenta; Lightroom-scale sliders), correcting for illuminants that sit off the blackbody line
 export const WB_PRESETS = [
   { id: 'daylight', name: 'Daylight', K: 5500, tintAdd: 1 },
