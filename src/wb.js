@@ -40,7 +40,7 @@ function kTable(wb) {
 /** Colour temperature (K) a temp slider position stands for. */
 export function tempToKelvin(wb, temp) {
   const { ks, ts } = kTable(wb);
-  if (temp <= ts[0]) return ks[0];
+  if (temp <= ts[0]) { let j = 0; while (j + 1 < ts.length && ts[j + 1] <= ts[0]) j++; return ks[j]; }   // slider at its cool end: the warmest K that still needs all of it
   for (let i = 1; i < ts.length; i++) if (ts[i] >= temp) { const f = ts[i] === ts[i - 1] ? 0 : (temp - ts[i - 1]) / (ts[i] - ts[i - 1]); return Math.round((ks[i - 1] + f * K_STEP) / 10) * 10; }
   return ks[ks.length - 1];
 }
@@ -54,8 +54,8 @@ export function kelvinToTemp(wb, K, precise = false) {
   const { ks, ts } = kTable(wb);
   const x = Math.max(K_MIN, Math.min(K_MAX, K)), i = Math.min(ks.length - 2, Math.floor((x - K_MIN) / K_STEP));
   const f = (x - ks[i]) / K_STEP;
-  const t = Math.max(-100, Math.min(100, ts[i] + f * (ts[i + 1] - ts[i])));
-  return precise ? Math.round(t * 100) / 100 : Math.round(t);
+  const t = ts[i] + f * (ts[i + 1] - ts[i]);
+  return precise ? Math.round(t * 100) / 100 : Math.max(-100, Math.min(100, Math.round(t)));
 }
 
 // tintAdd is in slider units (+ = magenta; Lightroom-scale sliders), correcting for illuminants that sit off the blackbody line
@@ -68,7 +68,7 @@ export const WB_PRESETS = [
   { id: 'flash', name: 'Flash', K: 5500, tintAdd: 0 },
 ];
 
-/** { temp, tint } (-100..100) for a preset on this camera. */
+/** { temp, tint } for a preset on this camera. */
 export function presetValues(wb, preset) {
   const w = whiteUnderAsShot(wb, preset.K);
   const { temp, tint } = wbFromLinear(w, true);                    // temp unrounded, so the slider shows the preset's own Kelvin

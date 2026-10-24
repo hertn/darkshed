@@ -47,6 +47,7 @@ export function wbFromLinear([r, g, b], precise = false) {
     const o = [0, 1, 2].map((i) => Math.max(m[i * 3] * r + m[i * 3 + 1] * g + m[i * 3 + 2] * b, 1e-6));
     return [Math.log(o[0] / o[1]), Math.log(o[2] / o[1])];
   };
+  const lim = 1;
   let t = 0, n = 0;
   for (let it = 0; it < 30; it++) {                       // Newton steps with a numerical Jacobian
     const e = err(t, n), h = 1e-3;
@@ -54,7 +55,7 @@ export function wbFromLinear([r, g, b], precise = false) {
     const j00 = (a[0] - e[0]) / h, j10 = (a[1] - e[1]) / h, j01 = (c[0] - e[0]) / h, j11 = (c[1] - e[1]) / h;
     const det = j00 * j11 - j01 * j10;
     if (Math.abs(det) < 1e-9) break;
-    t = Math.max(-1, Math.min(1, t - (e[0] * j11 - e[1] * j01) / det));
+    t = Math.max(-lim, Math.min(lim, t - (e[0] * j11 - e[1] * j01) / det));
     n = Math.max(-1, Math.min(1, n - (j00 * e[1] - j10 * e[0]) / det));
   }
   const clamp = (x) => Math.max(-100, Math.min(100, precise ? x * 100 : Math.round(x * 100)));
