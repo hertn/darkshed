@@ -33,6 +33,7 @@ export const TUNE = {
   knee: 0.133,    // exposure roll-off into the highlights starts at this linear brightness
   ctP: 1.4,      // contrast pivot warp (1 = mid-grey)
   ppExp: 1,      // exposure and its highlight roll-off in ProPhoto (1) or sRGB (0)
+  ppCurve: 1,    // tone curves per channel in ProPhoto primaries (1) or sRGB (0)
   hlTop: 0.998,  // brightness where the highlights slider fades out again (white stays white)
 };
 // (fitted on one preset and photo against Lightroom's own export; DarkShed's built-in looks were rescaled to keep their appearance)

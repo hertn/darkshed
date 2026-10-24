@@ -125,6 +125,7 @@ uniform float uGrdK;
 uniform vec4 uGt;           // grading: luminance strength, zone falloff at blending 0 and 100
 uniform vec2 uMk;           // shadow/highlight mask: share of the brightest channel (vs luma); white balance: share of luminance kept constant
 uniform mat3 uWmT, uWmN;    // white balance matrices at temperature +25 and tint +20
+uniform float uPPc;         // share of the tone curve done in ProPhoto primaries
 uniform float uPPe;         // 1 = exposure stage in ProPhoto
 uniform float uCtP;         // contrast pivot warp (1 = pivot at mid-grey)
 uniform float uKnee;        // exposure highlight roll-off starts here (linear)
@@ -275,7 +276,14 @@ void main() {
     p = mix(p, pl, w);
   }
 
-  if (uCurveOn) { vec3 pc = clamp(p, 0.0, 1.0); p = vec3(curveAt(pc.r, 0), curveAt(pc.g, 1), curveAt(pc.b, 2)); }
+  if (uCurveOn) {
+    vec3 pc = clamp(p, 0.0, 1.0);
+    vec3 srgb = vec3(curveAt(pc.r, 0), curveAt(pc.g, 1), curveAt(pc.b, 2));
+    // Lightroom runs its curves per channel in ProPhoto primaries (with the sRGB transfer curve), which is what makes saturated colours behave differently
+    vec3 qc = clamp(enc(max(TOPP * dec(pc), 0.0)), 0.0, 1.0);
+    vec3 pp = enc(max(FROMPP * dec(vec3(curveAt(qc.r, 0), curveAt(qc.g, 1), curveAt(qc.b, 2))), 0.0));
+    p = mix(srgb, pp, uPPc);
+  }
   p = colorAdj(p, uGC);
 
   // HSL: 8 bands with triangular hue windows that sum to 1 everywhere on the wheel
@@ -885,6 +893,7 @@ export class Renderer {
     gl.uniform1f(p.u('uKnee'), TUNE.knee);
     gl.uniform1f(p.u('uCtP'), TUNE.ctP);
     gl.uniform1f(p.u('uPPe'), TUNE.ppExp);
+    gl.uniform1f(p.u('uPPc'), TUNE.ppCurve);
     gl.uniform2f(p.u('uWf'), TUNE.wbF, TUNE.wbA);
     gl.uniform4f(p.u('uTn4'), TUNE.vbK, TUNE.saK, TUNE.wbS, TUNE.satLin);
     gl.uniform4f(p.u('uTn2'), TUNE.exK, TUNE.ctK, TUNE.shK, TUNE.shHi);
