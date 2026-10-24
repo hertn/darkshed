@@ -99,8 +99,9 @@ export function autoTone(img) {
   // exposure: distance (in stops) of the median from a pleasant mid value, with a dead zone so normal exposures stay put
   const e0 = Math.log2(dec(0.46) / Math.max(dec(median), 1e-4));
   const shrink = Math.sign(e0) * Math.max(0, Math.abs(e0) - 0.4) * (e0 > 0 ? 0.78 : 0.62);
-  const exposure = Math.round(Math.max(-1.2, Math.min(2.2, shrink)) * 100) / 100;
-  const gain = Math.pow(2, exposure);
+  const stops = Math.max(-1.2, Math.min(2.2, shrink));
+  const exposure = Math.round((stops / TUNE.exK) * 100) / 100;      // the slider is Lightroom-scaled: one unit is exK stops here
+  const gain = Math.pow(2, exposure * TUNE.exK);
   const g = (q) => enc2(at(q) * gain);
   const frac = (pred) => { let c = 0; for (let i = 0; i < n; i++) if (pred(enc2(ls[i] * gain))) c++; return c / n; };
   const clipped = frac((v) => v >= 0.985), dark = frac((v) => v < 0.14);
