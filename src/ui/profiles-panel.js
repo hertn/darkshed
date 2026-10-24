@@ -28,7 +28,7 @@ export function createProfilesPanel() {
 
   function states(it) {
     const rs = renderState(it);
-    return BASE_PROFILES.map(([, v]) => { const p = clone(it.params); p.baseProfile = v; return { p, raw: rs.raw, camera: rs.camera, camFit: v === 'camera' ? it.camFit || null : null }; });
+    return BASE_PROFILES.map(([, v]) => { const p = clone(it.params); p.baseProfile = v; return { p, raw: rs.raw, camera: rs.camera, wbGain: rs.wbGain, camFit: v === 'camera' ? it.camFit || null : null }; });
   }
 
   function rebuild() {

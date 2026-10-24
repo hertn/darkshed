@@ -7,6 +7,7 @@ import { patchExif, injectExif } from './exif.js';
 import { getLut } from './looks.js';
 import { zip } from './zip.js';
 import { ensureCamFit } from './camfit.js';
+import { kelvinGains } from './wb.js';
 import { patchImage, accessRgb16, accessRgba8 } from './spots.js';
 import { displayP3Profile, injectIccJpeg, injectIccPng } from './icc.js';
 import { tiff16 } from './tiff.js';
@@ -47,6 +48,7 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
     if (item.params.baseProfile === 'camera') { onProgress(0.03, 'Matching the camera look…'); await ensureCamFit(item); }
     const st = renderState(item);
     if (full.camera) st.camera = full.camera;
+    if (full.wb && item.params.wbK) st.wbGain = kelvinGains(full.wb, item.params.wbK);
     const geo = makeGeo(item.crop, A, false);
     er.setGeometry(geo);
 

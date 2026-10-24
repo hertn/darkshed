@@ -125,6 +125,8 @@ uniform vec4 uTn;           // slider strengths (see tuning.js): wb temp, wb tin
 uniform float uGrdK;
 uniform vec4 uGt;           // grading: luminance strength, zone falloff at blending 0 and 100
 uniform vec2 uMk;           // shadow/highlight mask: share of the brightest channel (vs luma); white balance: share of luminance kept constant
+uniform vec3 uWbG;            // RAW white balance set in Kelvin: per-channel gains relative to the as-shot white balance
+uniform float uWbOn;
 uniform mat3 uWmT, uWmN;    // white balance matrices at temperature +25 and tint +20
 uniform float uPPc;         // share of the tone curve done in ProPhoto primaries
 uniform bool uRawOn;        // RAW file: Lightroom's camera-profile base curve replaces the plain sRGB encode
@@ -222,9 +224,10 @@ mat3 wbMat(mat3 K, float t) {
 const mat3 TOPP = mat3(0.529346, 0.098374, 0.016883, 0.330073, 0.873461, 0.117672, 0.140581, 0.028165, 0.865444);
 const mat3 FROMPP = mat3(2.034076, -0.228813, -0.008570, -0.727334, 1.231730, -0.153287, -0.306742, -0.002917, 1.161856);
 // linear-light part of an adjustment set: white balance, exposure (+ highlight shoulder), shadows / highlights
-vec3 toneLin(vec3 c, vec4 A, vec4 B) {
+vec3 toneLin(vec3 c, vec4 A, vec4 B, float glob) {
   float wf = 1.0 - uWf.x * smoothstep(uWf.y, 1.0, luma(enc(c)));
-  mat3 wm = wbMat(uWmT, B.z * 4.0 * wf) * wbMat(uWmN, B.w * 5.0 * wf);
+  mat3 wt = (glob * uWbOn > 0.5) ? mat3(pow(uWbG.x, wf), 0.0, 0.0, 0.0, pow(uWbG.y, wf), 0.0, 0.0, 0.0, pow(uWbG.z, wf)) : wbMat(uWmT, B.z * 4.0 * wf);
+  mat3 wm = wt * wbMat(uWmN, B.w * 5.0 * wf);
   wm /= mix(1.0, luma(wm * vec3(1.0)), uMk.y);
   c = wm * c;
   if (uPPe > 0.5) c = TOPP * c;                        // exposure and its highlight roll-off work in ProPhoto, as in Lightroom
@@ -305,7 +308,7 @@ void main() {
     c.g *= exp2(-uCalTint * 0.6 * sh);
   }
   if (uRawOn) c *= exp2(uRawOff);
-  c = toneLin(c, uGA, uGB);
+  c = toneLin(c, uGA, uGB, 1.0);
   vec3 p = uRawOn ? hlRaw(profAdj(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uProf), uGA.z) : enc(c);
   p = toneEnc(p, uGA, uGB);
 
@@ -314,7 +317,7 @@ void main() {
     if (uMInfo[i].x < 0.5) continue;
     float w = maskWeight(i, hp, layerUv, p);
     if (w < 0.002) continue;
-    vec3 cl = toneLin(dec(p), uMA[i], uMB[i]);
+    vec3 cl = toneLin(dec(p), uMA[i], uMB[i], 0.0);
     vec3 pl = colorAdj(toneEnc(enc(cl), uMA[i], uMB[i]), uMC[i]);
     if (uRawOn) pl = hlRaw(pl, uMA[i].z);
     p = mix(p, pl, w);
@@ -938,6 +941,7 @@ export class Renderer {
     gl.uniform1f(p.u('uCtP'), TUNE.ctP);
     gl.uniform1f(p.u('uPPe'), TUNE.ppExp);
     gl.uniform1i(p.u('uRawOn'), state.raw ? 1 : 0);
+    gl.uniform3fv(p.u('uWbG'), state.wbGain || [1, 1, 1]); gl.uniform1f(p.u('uWbOn'), state.wbGain ? 1 : 0);
     gl.uniform1f(p.u('uRawOff'), rawCamStops(state.camera));
     const bp = state.raw ? (par.baseProfile || '') : '';
     gl.uniform2f(p.u('uProf'), ...(BASE_LOOKS[bp] || [0, 1]));
@@ -1193,7 +1197,7 @@ export class Renderer {
     this.tex = this.smallTex;
     for (const st of states) {
       if (st.lut) this.setLut(st.lut);
-      this.passEdit({ p: st.p, masks: [], raw: st.raw, camera: st.camera, camFit: st.camFit }, false, this.thumbFbo, { x: 0, y: 0, w, h, imgW: w, imgH: h, tex: { origin: [0, 0], size: [w, h] } });
+      this.passEdit({ p: st.p, masks: [], raw: st.raw, camera: st.camera, camFit: st.camFit, wbGain: st.wbGain }, false, this.thumbFbo, { x: 0, y: 0, w, h, imgW: w, imgH: h, tex: { origin: [0, 0], size: [w, h] } });
       const buf = new Uint8Array(w * h * 4);
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.thumbFbo);
       gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);

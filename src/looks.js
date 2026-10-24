@@ -8,7 +8,7 @@ import { unzip } from './zip.js';
 import { validPreset } from './merge.js';
 
 // Keys a "look" owns. Applying a look resets these, then applies its patch; exposure, white balance and detail stay yours.
-const KEEP = new Set(['exposure', 'temp', 'tint', 'sharpAmount', 'sharpRadius', 'sharpMasking', 'nrLuma', 'nrColor', 'caRemove', 'defringePurple', 'defringeGreen', 'caRed', 'caBlue', 'distortion', 'lensVignette']);
+const KEEP = new Set(['exposure', 'temp', 'tint', 'wbK', 'sharpAmount', 'sharpRadius', 'sharpMasking', 'nrLuma', 'nrColor', 'caRemove', 'defringePurple', 'defringeGreen', 'caRed', 'caBlue', 'distortion', 'lensVignette']);
 export const LOOK_KEYS = [...PARAMS, ...HSL_PARAMS, ...GRADE_PARAMS].map((p) => p[0]).filter((k) => !KEEP.has(k));
 
 export function applyLook(params, patch, profile = '') {
