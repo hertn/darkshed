@@ -112,6 +112,7 @@ export const defaults = () => ({
   ...KEY_DEFAULT,
   bw: 0,
   profile: '',      // '' | 'b:<built-in look>' | 'l:<lut id>' (what the Profile dropdown shows)
+  baseProfile: '',  // RAW only: '' = Adobe Color | 'camera' | 'neutral' | 'vivid' | 'landscape' | 'portrait'
   lut: null,        // id of a LUT from the looks library
   lutAmount: 100,
   curves: identityCurves(),

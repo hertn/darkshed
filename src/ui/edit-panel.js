@@ -14,6 +14,9 @@ import { BUILTIN, applyProfile, listLuts } from '../looks.js';
 import { isEdited } from '../library.js';
 import { defaults as paramDefaults, defaultCrop } from '../params.js';
 import { toast } from './overlays.js';
+import { ensureCamFit } from '../camfit.js';
+import { BASE_PROFILES } from '../tuning.js';
+import { isRaw } from '../decode.js';
 
 const widgets = {};            // param key -> slider
 const sections = {};           // id -> { el, keys, curves, badge, pwr, reset }
@@ -23,7 +26,7 @@ let soloOn = lsGet('solo', '0') === '1';
 let curveEditor = null, histogram = null, bwBtn = null;
 let colorMixSel = lsGet('mixSel', 'red');
 const mixSliders = {}, checks = {};
-let wbSelect = null, profSelect = null, resetBtn = null, bwMobile = null;
+let baseRow = null, baseSelect = null, wbSelect = null, profSelect = null, resetBtn = null, bwMobile = null;
 let grading = null, mixSwatches = {};
 
 const P = () => curItem()?.params;
@@ -145,6 +148,12 @@ async function buildProfileOptions() {
 }
 function syncProfile() {
   if (!profSelect) return;
+  const cur = curItem();
+  if (baseRow) {
+    baseRow.hidden = !(cur && isRaw(cur.file));
+    baseSelect.value = P()?.baseProfile || '';
+    if (cur && P()?.baseProfile === 'camera' && cur.camFit === undefined) ensureCamFit(cur).then(() => changed({ edit: true }));
+  }
   const v = P()?.profile || '';
   profSelect.value = [...profSelect.options].some((o) => o.value === v) ? v : '';
   const it = curItem();
@@ -239,6 +248,21 @@ export function createEditPanel() {
   profSelect = document.createElement('select');
   profRow.append(profLab, profSelect);
   head.append(profRow);
+  // RAW base profile (Adobe Color, Camera Matching, ...): only shown for RAW photos
+  baseRow = document.createElement('div'); baseRow.className = 'field-row'; baseRow.style.padding = '0 16px 8px'; baseRow.hidden = true;
+  const baseLab = document.createElement('label'); baseLab.textContent = 'Camera profile';
+  baseSelect = document.createElement('select');
+  for (const [t, v] of BASE_PROFILES) { const o = document.createElement('option'); o.value = v; o.textContent = t; baseSelect.append(o); }
+  baseRow.append(baseLab, baseSelect);
+  head.append(baseRow);
+  baseSelect.onchange = async () => {
+    const it = curItem(); if (!it) return;
+    it.params.baseProfile = baseSelect.value;
+    const label = baseSelect.options[baseSelect.selectedIndex].textContent;
+    if (baseSelect.value === 'camera' && it.camFit === undefined) toast("Matching the camera's own look…");
+    if (baseSelect.value === 'camera' && !(await ensureCamFit(it))) toast('This file has no usable camera preview, so Camera Matching has no effect.', 4000);
+    changed({ edit: true }); commit(`Camera profile: ${label}`);
+  };
   profSelect.onchange = () => {
     const it = curItem(); if (!it) return;
     applyProfile(it.params, profSelect.value);
