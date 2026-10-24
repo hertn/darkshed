@@ -1,10 +1,10 @@
 // The Edit panel: histogram, Auto / B&W, and the Light / Color / Effects / Detail sections.
 import { app, curItem, changed, commit, registerSection, bus } from '../app.js';
-import { PARAMS, HSL_PARAMS, GRADE_PARAMS, HSL_BANDS, BAND_HUE, GRADE_ZONES, SECTIONS, defaults, identityCurves } from '../params.js';
+import { PARAMS, HSL_PARAMS, GRADE_PARAMS, HSL_BANDS, BAND_HUE, SECTIONS, defaults, identityCurves } from '../params.js';
 import { curvesActive } from '../curves-math.js';
 import { createCurveEditor } from '../curves.js';
 import { createHistogram } from './histogram.js';
-import { createWheel } from './wheel.js';
+import { createGrading } from './grading.js';
 import { slider } from './slider.js';
 import { icon } from './icons.js';
 import { autoTone, autoWb } from '../analyze.js';
@@ -22,10 +22,9 @@ const D = defaults();
 let soloOn = lsGet('solo', '0') === '1';
 let curveEditor = null, histogram = null, bwBtn = null;
 let colorMixSel = lsGet('mixSel', 'red');
-let gradeZone = lsGet('gradeZone', 'shadow');
-const mixSliders = {}, gradeSliders = {}, checks = {};
+const mixSliders = {}, checks = {};
 let wbSelect = null, profSelect = null, resetBtn = null, bwMobile = null;
-let wheel = null, mixSwatches = {}, gradeTabs = {};
+let grading = null, mixSwatches = {};
 
 const P = () => curItem()?.params;
 
@@ -70,7 +69,7 @@ function makeSection(id, title, { open, keys, curves = false, extraReset }) {
   const lead = document.createElement('span'); lead.className = 'lead'; lead.style.display = 'inline-flex'; lead.style.alignItems = 'center'; lead.style.gap = '8px';
   lead.append(ttl, badge);
   const tail = document.createElement('span'); tail.className = 'tail';
-  const reset = document.createElement('button'); reset.className = 'mini'; reset.textContent = 'Reset'; reset.hidden = true;
+  const reset = document.createElement('button'); reset.className = 'mini reset-btn'; reset.textContent = 'Reset'; reset.hidden = true;
   const pwr = document.createElement('button'); pwr.className = 'pwr on'; pwr.title = 'Turn this section on / off';
   tail.append(reset, pwr);
   sum.append(lead, tail);
@@ -124,7 +123,7 @@ export function refresh() {
   }
   for (const s of Object.values(subs)) s.badge.hidden = !keysModified(s.keys, s.curves);
   for (const [b, el] of Object.entries(mixSwatches)) el.classList.toggle('mod', ['hue', 'sat', 'lum'].some((k) => !isDef(`hsl_${b}_${k}`)));
-  for (const [z, el] of Object.entries(gradeTabs)) el.classList.toggle('mod', ['hue', 'sat', 'lum'].some((k) => !isDef(`grade_${z}_${k}`)) && (!isDef(`grade_${z}_sat`) || !isDef(`grade_${z}_lum`)));
+  grading?.mark(isDef);
   bwBtn?.classList.toggle('on', !!P()?.bw);
   bwMobile?.classList.toggle('bw-on', !!P()?.bw);
   syncWb(); syncProfile();
@@ -215,12 +214,7 @@ function syncMix() {
 }
 
 // ---------- colour grading ----------
-function syncGrade() {
-  const p = P(); if (!p) return;
-  for (const [kind, w] of Object.entries(gradeSliders)) w.set(p[`grade_${gradeZone}_${kind}`] ?? 0);
-  wheel?.set(p[`grade_${gradeZone}_hue`] ?? 0, (p[`grade_${gradeZone}_sat`] ?? 0) / 100);
-  for (const [z, el] of Object.entries(gradeTabs)) el.classList.toggle('on', z === gradeZone);
-}
+function syncGrade() { grading?.sync(); }
 
 // ---------- build ----------
 export function createEditPanel() {
@@ -230,7 +224,13 @@ export function createEditPanel() {
   const head = document.createElement('div'); head.className = 'edit-head';     // stays put while the sections scroll
   const hw = document.createElement('div'); hw.className = 'hist-wrap';
   const hc = document.createElement('canvas'); hc.className = 'hist';
-  hw.append(hc);
+  // desktop: the histogram folds away like a section (on phones it floats over the photo and the header is hidden)
+  const hh = document.createElement('button'); hh.className = 'hist-head'; hh.type = 'button';
+  hh.innerHTML = '<span class="ttl">Histogram</span>';
+  const setHistOpen = (on) => { hw.classList.toggle('closed', !on); hh.setAttribute('aria-expanded', on ? 'true' : 'false'); lsSet('histOpen', on ? '1' : '0'); };
+  hh.onclick = () => setHistOpen(hw.classList.contains('closed'));
+  setHistOpen(lsGet('histOpen', '1') === '1');
+  hw.append(hh, hc);
   head.append(hw);
   histogram = createHistogram(hc);
   // Profile (looks) dropdown
@@ -278,7 +278,7 @@ export function createEditPanel() {
 
   const lightKeys = PARAMS.filter((p) => p[5] === 'light').map((p) => p[0]);
   const colorParams = PARAMS.filter((p) => p[5] === 'color');
-  const colorKeys = [...colorParams.map((p) => p[0]), ...HSL_PARAMS.map((p) => p[0]), ...GRADE_PARAMS.map((p) => p[0]), 'bw'];
+  const colorKeys = [...colorParams.map((p) => p[0]), ...HSL_PARAMS.map((p) => p[0]), 'bw'];
   const effectsKeys = PARAMS.filter((p) => p[5] === 'effects').map((p) => p[0]);
   const detailKeys = PARAMS.filter((p) => p[5] === 'detail').map((p) => p[0]);
   const open = Object.fromEntries(SECTIONS.map(([id, , o]) => [id, o]));
@@ -301,13 +301,13 @@ export function createEditPanel() {
   // ----- Color -----
   {
     const body = makeSection('color', 'Color', { open: open.color, keys: colorKeys, extraReset: (it) => { it.params.bw = 0; } });
-    // black & white on phones: a button at the top right of the Color panel, laid out like the Curves button on Light
+    // black & white on phones: a button at the top left of the Color panel
     {
-      const tail = sections.color.el.querySelector('summary .tail');
+      const sum = sections.color.el.querySelector('summary');
       const bwM = document.createElement('button'); bwM.className = 'mini m-only bw-btn'; bwM.title = 'Black & white';
       bwM.innerHTML = icon('bw', 16) + '<span>B&W</span>';
       bwM.onclick = (e) => { e.preventDefault(); e.stopPropagation(); bwBtn.click(); };
-      tail.prepend(bwM); bwMobile = bwM;
+      sum.prepend(bwM); bwMobile = bwM;       // far left of the header; HSL and Grading sit on the right (added in mobile.js)
     }
     // white balance: preset dropdown + eyedropper (presets for RAW only, like Lightroom)
     const wbRow = document.createElement('div'); wbRow.className = 'field-row'; wbRow.style.paddingBottom = '2px';
@@ -336,39 +336,25 @@ export function createEditPanel() {
       });
       mixSliders[kind] = w; mb.append(w.el);
     }
+  }
 
-    // colour grading
-    const gb = makeSub(body, 'grade', 'Color grading', { keys: GRADE_PARAMS.map((p) => p[0]), parentId: 'color' });
-    const tabs = document.createElement('div'); tabs.className = 'tabs';
-    for (const [z, label] of GRADE_ZONES) {
-      const t = document.createElement('button'); t.className = 'tab'; t.textContent = label.replace('Highlights', 'Highlights');
-      t.onclick = () => { gradeZone = z; lsSet('gradeZone', z); syncGrade(); };
-      gradeTabs[z] = t; tabs.append(t);
-    }
-    gb.append(tabs);
-    const wrap = document.createElement('div'); wrap.className = 'wheel-wrap';
-    wheel = createWheel({
-      onInput: (h, s) => {
-        const it = curItem(); if (!it) return;
-        it.params[`grade_${gradeZone}_hue`] = h; it.params[`grade_${gradeZone}_sat`] = s;
-        gradeSliders.hue.set(h); gradeSliders.sat.set(s);
-        changed({ edit: true }); refresh();
-      },
-      onCommit: () => commit('Color grading'),
+  // ----- Color grading (its own section, like Lightroom's) -----
+  {
+    const gkeys = GRADE_PARAMS.map((p) => p[0]);
+    const body = makeSection('grading', 'Color grading', { open: open.grading, keys: gkeys });
+    grading = createGrading({
+      params: P,
+      live: () => { changed({ edit: true }); refresh(); },
+      commit,
+      setLum: (z, v) => setParam(`grade_${z}_lum`, v),
     });
-    wrap.append(wheel.el); gb.append(wrap);
-    for (const [kind, label, min, max] of [['hue', 'Hue', 0, 360], ['sat', 'Saturation', 0, 100], ['lum', 'Luminance', -100, 100]]) {
-      const w = slider({
-        label, min, max, step: 1, def: 0, value: 0, format: (v) => String(Math.round(v)),
-        onInput: (v) => {
-          setParam(`grade_${gradeZone}_${kind}`, v);
-          const p = P(); wheel.set(p[`grade_${gradeZone}_hue`], p[`grade_${gradeZone}_sat`] / 100);
-        },
-        onChange: () => commit('Color grading'),
-      });
-      gradeSliders[kind] = w; gb.append(w.el);
-    }
-    GRADE_PARAMS.filter((p) => p[0] === 'grade_blend' || p[0] === 'grade_balance').forEach((row) => paramSlider(gb, row, { label: row[1] }));
+    body.append(grading.el);
+    GRADE_PARAMS.filter((p) => p[0] === 'grade_blend' || p[0] === 'grade_balance').forEach((row) => paramSlider(grading.blendHost, row));
+    const hd = document.createElement('p'); hd.className = 'hint desk-only';
+    hd.textContent = 'Hold Shift to change only the saturation, Ctrl (Cmd on a Mac) to change only the hue. Double-click a wheel to reset it.';
+    const hm = document.createElement('p'); hm.className = 'hint m-only';
+    hm.textContent = 'Swipe sideways or tap a tab. Double-tap a wheel to reset it.';
+    body.append(hd, hm);
   }
 
   // ----- Effects -----

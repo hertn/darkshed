@@ -5,6 +5,7 @@
 // Pass 1 can render any horizontal region of the image, which is how full-resolution export works in strips.
 
 import { HSL_BANDS, GRADE_ZONES, MAX_MASKS, MAX_BRUSH_MASKS, MAX_COMPS, identityCurves } from './params.js';
+import { TUNE } from './tuning.js';
 import { evalCurve, curvesActive, curveIsIdentity } from './curves-math.js';
 
 export { evalCurve, curvesActive, curveIsIdentity };
@@ -118,6 +119,12 @@ uniform vec4 uMC[8];
 uniform vec3 uHsl[8];
 uniform vec3 uGrd[4];       // shadow, mid, high, global: (hue 0..1, sat 0..1, lum -1..1)
 uniform vec2 uGrdBB;        // blending, balance
+uniform vec4 uTn;           // slider strengths (see tuning.js): wb temp, wb tint, highlights, highlights start
+uniform float uGrdK;
+uniform vec2 uWb;           // blue per temp, green per temp
+uniform vec2 uTn4;          // vibrance, saturation strength
+uniform vec4 uTn2;          // exposure, contrast, shadows, shadows range
+uniform vec4 uTn3;          // whites, blacks, highlights fade-out, shadows lift
 uniform float uLutAmt, uLutSize, uLensVig, uCalTint;
 uniform mat3 uCalM;
 uniform bool uCalOn;
@@ -158,39 +165,41 @@ float curveAt(float v, int ch) {
 
 // linear-light part of an adjustment set: white balance, exposure (+ highlight shoulder), shadows / highlights
 vec3 toneLin(vec3 c, vec4 A, vec4 B) {
-  vec3 wb = vec3(exp2(B.z * 1.9), exp2(-B.w * 0.7), exp2(-B.z * 1.9));
+  vec3 wb = exp2(vec3(B.z * uTn.x, B.z * uWb.y - B.w * uTn.y, -B.z * uWb.x));
   wb /= luma(wb);
   c *= wb;
-  float W = exp2(max(A.x, 0.0));
-  c *= exp2(A.x);
+  float ex = A.x * uTn2.x;
+  float W = exp2(max(ex, 0.0));
+  c *= exp2(ex);
   const float KNEE = 0.5;
   float a = (W - 1.0) / (1.0 - KNEE);
   vec3 t = clamp((c - KNEE) / max(W - KNEE, 1e-4), 0.0, 1.0);
   vec3 sh = KNEE + (1.0 - KNEE) * t * (1.0 + a) / (1.0 + a * t);
   c = mix(c, sh, step(KNEE, c));
   float le = luma(enc(c));
-  float ms = 1.0 - smoothstep(0.0, 0.6, le);
-  float mh = smoothstep(0.3, 1.0, le);
-  c *= exp2(A.w * 2.0 * ms);
-  c += max(A.w, 0.0) * 0.006 * ms;
-  c *= exp2(A.z * 1.4 * mh);
+  float ms = 1.0 - smoothstep(0.0, uTn2.w, le);
+  float mh = smoothstep(uTn.w, 1.0, le) * (1.0 - smoothstep(uTn3.z, 1.0, le));
+  c *= exp2(A.w * uTn2.z * ms);
+  c += max(A.w, 0.0) * uTn3.w * ms * smoothstep(0.0, 0.003, le);
+  c *= exp2(A.z * uTn.z * mh);
   return c;
 }
 // display-referred part: blacks / whites, contrast
 vec3 toneEnc(vec3 p, vec4 A, vec4 B) {
-  float bp = -B.y * 0.14;
-  float wp = 1.0 - B.x * 0.2;
+  float bp = -B.y * uTn3.y;
+  float wp = 1.0 - B.x * uTn3.x;
   p = (p - bp) / max(wp - bp, 0.05);
   vec3 q = clamp(p, 0.0, 1.0);
   vec3 sc = q * q * (3.0 - 2.0 * q);
-  return A.y >= 0.0 ? mix(p, sc, A.y) : mix(p, vec3(0.5), -A.y * 0.5);
+  float ct = A.y * uTn2.y;
+  return ct >= 0.0 ? mix(p, sc, ct) : mix(p, vec3(0.5), -ct * 0.5);
 }
 vec3 colorAdj(vec3 p, vec4 C) {
   float lm = luma(p);
   float mx = max(p.r, max(p.g, p.b));
   float mn = min(p.r, min(p.g, p.b));
   float sat = (mx - mn) / max(mx, 1e-4);
-  float k = max(1.0 + C.y + C.x * (1.0 - sat), 0.0);
+  float k = max(1.0 + C.y * uTn4.y + C.x * uTn4.x * (1.0 - sat), 0.0);
   return lm + (p - lm) * k;
 }
 
@@ -206,7 +215,7 @@ vec3 grade(vec3 p) {
   for (int i = 0; i < 4; i++) {
     vec3 g = uGrd[i];
     vec3 tint = hsv2rgb(vec3(g.x, 1.0, 1.0));
-    p += (tint - luma(tint)) * g.y * w[i] * 0.4;
+    p += (tint - luma(tint)) * g.y * w[i] * uGrdK;
     p += g.z * w[i] * 0.25;
   }
   return p;
@@ -840,6 +849,12 @@ export class Renderer {
     });
     gl.uniform3fv(p.u('uGrd'), grd);
     gl.uniform2f(p.u('uGrdBB'), par.grade_blend / 100, par.grade_balance / 100);
+    gl.uniform4f(p.u('uTn'), TUNE.wbT, TUNE.wbN, TUNE.hlK, TUNE.hlLo);
+    gl.uniform1f(p.u('uGrdK'), TUNE.grdK);
+    gl.uniform2f(p.u('uWb'), TUNE.wbB, TUNE.wbC);
+    gl.uniform2f(p.u('uTn4'), TUNE.vbK, TUNE.saK);
+    gl.uniform4f(p.u('uTn2'), TUNE.exK, TUNE.ctK, TUNE.shK, TUNE.shHi);
+    gl.uniform4f(p.u('uTn3'), TUNE.whK, TUNE.blK, TUNE.hlTop, TUNE.shLift);
     gl.uniform1i(p.u('uGrdOn'), grdOn ? 1 : 0);
     gl.uniform1i(p.u('uCurveOn'), curvesActive(par.curves) ? 1 : 0);
     gl.uniform1i(p.u('uBw'), par.bw ? 1 : 0);

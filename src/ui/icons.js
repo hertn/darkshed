@@ -48,6 +48,7 @@ const P = {
   palette: '<path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.7-.8 1.7-1.6 0-1.1-1-1.3-1-2.4 0-.9.7-1.5 1.6-1.5H17a4 4 0 0 0 4-4C21 7 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/>',
   fx: '<path d="m12 3 1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="m18.5 15 .8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   detail: '<path d="M4 19 10 6l6 13z"/><path d="m13 19 4-9 4 9z"/>',
+  wheel: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="7.5" r="1.3"/><circle cx="7.8" cy="14.5" r="1.3"/><circle cx="16.2" cy="14.5" r="1.3"/>',
   curve: '<path d="M4 20c6 0 4-16 16-16"/><path d="M4 20h16M4 4v16" opacity=".4"/>',
   lens: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M12 4v4M20 12h-4M12 20v-4M4 12h4" opacity=".6"/>',
   calib: '<path d="M7 4v16M17 4v16M12 4v16"/><circle cx="7" cy="9" r="2" fill="currentColor"/><circle cx="12" cy="15" r="2" fill="currentColor"/><circle cx="17" cy="8" r="2" fill="currentColor"/>',

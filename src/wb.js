@@ -39,13 +39,13 @@ export function asShotKelvin(wb) {
   return Math.round(best / 50) * 50;
 }
 
-// tintAdd is in slider units (+ = magenta), correcting for illuminants that sit off the blackbody line
+// tintAdd is in slider units (+ = magenta; Lightroom-scale sliders), correcting for illuminants that sit off the blackbody line
 export const WB_PRESETS = [
-  { id: 'daylight', name: 'Daylight', K: 5500, tintAdd: 3 },
-  { id: 'cloudy', name: 'Cloudy', K: 6500, tintAdd: 4 },
-  { id: 'shade', name: 'Shade', K: 7500, tintAdd: 5 },
+  { id: 'daylight', name: 'Daylight', K: 5500, tintAdd: 1 },
+  { id: 'cloudy', name: 'Cloudy', K: 6500, tintAdd: 2 },
+  { id: 'shade', name: 'Shade', K: 7500, tintAdd: 2 },
   { id: 'tungsten', name: 'Tungsten', K: 2850, tintAdd: 0 },
-  { id: 'fluorescent', name: 'Fluorescent', K: 3800, tintAdd: 22 },
+  { id: 'fluorescent', name: 'Fluorescent', K: 3800, tintAdd: 9 },
   { id: 'flash', name: 'Flash', K: 5500, tintAdd: 0 },
 ];
 

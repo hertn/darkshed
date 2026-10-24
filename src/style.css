@@ -107,6 +107,12 @@ svg { display: block; }
 .pane-sub { padding: 0 16px 10px; color: var(--mut); font-size: 12px; }
 .ph-row { display: flex; gap: 8px; padding: 0 12px 10px; flex-wrap: wrap; }
 .hist-wrap { padding: 12px 12px 6px; }
+.hist-head { display: flex; align-items: center; width: 100%; background: transparent; border: 0; padding: 0 2px 6px; cursor: pointer; color: var(--fg); }
+.hist-head .ttl { font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
+.hist-head .ttl::after { content: ''; width: 6px; height: 6px; border-right: 1.6px solid var(--mut); border-bottom: 1.6px solid var(--mut); transform: translateY(1px) rotate(-135deg); transition: transform .12s; }
+.hist-wrap.closed .hist-head { padding-bottom: 0; }
+.hist-wrap.closed .hist-head .ttl::after { transform: translateY(-2px) rotate(45deg); }
+.hist-wrap.closed canvas.hist { display: none; }
 canvas.hist { width: 100%; height: 86px; display: block; background: var(--well); border-radius: 4px; }
 .hist-info { display: flex; justify-content: space-between; font: 10.5px ui-monospace, monospace; color: var(--mut); padding: 4px 2px 0; min-height: 16px; }
 
@@ -165,8 +171,30 @@ input[type=range].lr:hover::-webkit-slider-thumb, input[type=range].lr:active::-
 .sw.mod::after { content: ''; position: absolute; right: -2px; top: -2px; width: 8px; height: 8px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px var(--panel); }
 canvas.curve { width: calc(100% - 32px); margin: 0 16px; aspect-ratio: 1; display: block; border-radius: 6px; background: var(--well); touch-action: none; cursor: crosshair; }
 .hint { color: var(--mut); font-size: 11.5px; margin: 8px 16px 0; }
-.wheel-wrap { padding: 4px 16px 6px; display: flex; justify-content: center; }
-canvas.wheel { width: 168px; height: 168px; touch-action: none; cursor: crosshair; }
+
+/* colour grading: three wheels side by side on a desktop panel, a swipe strip on a phone */
+.grade-tabs { display: none; }
+/* desktop: the three wheels in a triangle, midtones on top (like Lightroom's 3-way view) */
+.grade-track { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 6px; padding: 4px 10px 6px; }
+.gpage[data-z=mid] { grid-column: 1 / -1; grid-row: 1; justify-self: center; width: 44%; }
+.gpage[data-z=shadow] { grid-column: 1; grid-row: 2; }
+.gpage[data-z=high] { grid-column: 2; grid-row: 2; }
+.gpage[data-z=global] { grid-row: 3; } .gpage[data-z=blend] { grid-row: 4; }
+.gpage { min-width: 0; display: flex; flex-direction: column; align-items: stretch; }
+.gpage[data-z=global], .gpage[data-z=blend] { grid-column: 1 / -1; }
+.gname { text-align: center; color: var(--fg2); font-size: 12px; padding-bottom: 4px; }
+.wheel-wrap { display: flex; justify-content: center; padding: 0 4px; }
+canvas.wheel { width: 100%; max-width: 104px; aspect-ratio: 1; touch-action: none; cursor: crosshair; display: block; }
+.gread { text-align: center; color: var(--mut); font: 10.5px ui-monospace, SFMono-Regular, monospace; padding: 4px 0 0; white-space: pre; }
+.gpage .sl { padding: 2px 2px 0; }
+.gpage .sl .sl-val { width: 40px; }
+.gpage[data-z=global] { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 0 12px; padding: 4px 6px 0; }
+.gpage[data-z=global] .gname { grid-column: 1 / -1; }
+.gpage[data-z=global] .wheel-wrap { padding: 0; }
+.gpage[data-z=blend] { padding: 0; }
+.gpage[data-z=blend] .sl { padding: 3px 6px 1px; }
+body.m .desk-only, .m-only.hint { display: none; }
+body.m .hint.m-only { display: block !important; }
 .field-row { display: flex; gap: 8px; padding: 6px 16px; align-items: center; }
 .field-row label { color: var(--fg2); font-size: 12px; width: 76px; flex: none; }
 select, input[type=text], input[type=number], input[type=password] { background: var(--well); color: var(--fg); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 8px; font: inherit; min-width: 0; }
@@ -263,7 +291,7 @@ select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; bor
 
 /* histogram, profile and Auto / B&W / Reset stay visible while the sections scroll */
 .edit-head { position: sticky; top: 0; z-index: 6; background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: 0 6px 10px -8px #000a; }
-.edit-head .hist-wrap { padding-top: 10px; }
+.edit-head .hist-wrap { padding-top: 8px; }
 
 /* =====================================================================
    Phone / small tablet (Lightroom-mobile style): the photo is fixed in the middle, a tool dock runs along the bottom,
@@ -323,6 +351,25 @@ select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; bor
   .hist-wrap.hist-float canvas.hist { height: 52px; background: transparent; }
   .hist-wrap.hist-float.off { width: 30px; height: 30px; padding: 0; overflow: hidden; opacity: .55; }
   .hist-wrap.hist-float.off canvas.hist { height: 30px; width: 30px; }
+  .hist-wrap.hist-float .hist-head { display: none; }
+  .hist-wrap.hist-float.closed canvas.hist { display: block; }
+
+  /* colour grading on a phone: one wheel per page, swipe sideways or tap a tab */
+  .grade-tabs { display: flex; gap: 2px; margin: 2px 14px 6px; background: var(--well); border-radius: 8px; padding: 2px; overflow-x: auto; scrollbar-width: none; }
+  .grade-tabs::-webkit-scrollbar { display: none; }
+  .grade-tabs .tab { flex: 1 0 auto; padding: 8px 8px; font-size: 12.5px; }
+  .grade-track { display: flex; gap: 0; padding: 0; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; touch-action: pan-x pan-y; overscroll-behavior-x: contain; }
+  .grade-track::-webkit-scrollbar { display: none; }
+  .gpage, .gpage[data-z=global] { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; display: grid; grid-template-columns: 132px minmax(0, 1fr); align-items: center; gap: 0 18px; padding: 2px 18px 8px; }
+  .gpage .gname, .gpage[data-z=global] .gname { display: none; }                     /* the tab already names the wheel */
+  .gpage .wheel-wrap, .gpage[data-z=global] .wheel-wrap { flex: none; padding: 0; }
+  canvas.wheel { max-width: 132px; }
+  .gpage .gside { min-width: 0; }
+  .gread { text-align: left; font-size: 12.5px; padding: 0 0 6px; }
+  .gpage .sl, .gpage[data-z=blend] .sl { padding: 6px 0 4px; }
+  .gpage .sl .sl-val { width: 52px; }
+  .gpage[data-z=blend] { display: block; padding: 4px 18px 8px; }
+  .gpage[data-z=blend] .sl { padding: 6px 0 4px; }
 
   /* touch-sized controls */
   .sl { padding: 6px 18px 4px; }
@@ -369,10 +416,24 @@ body.m .btn.m-only { display: inline-flex !important; }
   body.curves-open .hist-wrap.hist-float { display: none; }
   /* the curve is drawn over the photo, see-through, so you can watch what it does */
   canvas.curve.float { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 8; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; background: transparent; aspect-ratio: auto; }
-  .mini.curves-btn, .mini.back-btn, .mini.bw-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; padding: 6px 9px; color: var(--fg); background: var(--raise); border-radius: 6px; }
+  .mini.curves-btn, .mini.done-btn, .mini.bw-btn, .mini.grade-btn, .mini.hsl-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; padding: 6px 9px; color: var(--fg); background: var(--raise); border-radius: 6px; }
 }
 
 @media (max-width: 860px) { .mini.bw-btn.bw-on { background: var(--acc); color: #fff; } }
+/* phone, Color section: B&W far left, HSL and Grading on the right. The HSL view shows only the HSL part, with a way back */
+@media (max-width: 860px) {
+  body.m details.sec.mshow > summary .bw-btn { margin-right: auto; pointer-events: auto; }
+  body.m details.sec[data-sec=color]:not(.m-hsl) .hsl-back { display: none !important; }
+  body.m details.sec[data-sec=color]:not(.m-hsl) > .body > .sub { display: none; }
+  body.m details.sec.m-hsl > summary .bw-btn, body.m details.sec.m-hsl > summary .grade-btn, body.m details.sec.m-hsl > summary .hsl-btn { display: none !important; }
+  body.m details.sec.m-hsl > .body > :not(.sub) { display: none; }
+  body.m details.sec.msub > summary .tail { flex: 1; }
+  body.m details.sec.msub > summary .pwr { margin-left: auto; }
+  body.m details.sec.msub > summary .reset-btn[hidden] { display: inline-flex; opacity: .35; pointer-events: none; }      /* always there, dimmed while there is nothing to reset */
+  body.m details.sec.msub > summary .done-btn { background: var(--acc); color: #fff; font-weight: 600; padding: 6px 14px; }
+  body.m details.sec.m-hsl > .body > .sub { border-top: 0; margin: 0; }
+  body.m details.sec.m-hsl .sub > summary { display: none; }
+}
 
 /* phone: the grid is for culling, so the edit sheet and tool dock get out of the way */
 @media (max-width: 860px) { body.m.grid-on .panel, body.m.grid-on .dock { display: none !important; } }
