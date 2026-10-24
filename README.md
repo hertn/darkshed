@@ -48,6 +48,7 @@ The same app on a phone, with a layout built for touch:
 
 - **Edit:** Light, Curves, Color (white balance with presets, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion), Calibration, B&W and LUTs.
 - **RAW profiles:** a Profiles tab (RAW files only) with a preview of each: Standard, Camera Matching (copies the look of the JPEG your camera stored in the file, so it works for any camera), Neutral, Vivid, Landscape and Portrait. RAW photos get a base tone curve fitted to common cameras, so they open with contrast instead of flat.
+- **RAW white balance in Kelvin:** the Temp slider runs 2000-50000 K in steps of 50, and the Daylight, Cloudy, Shade, Tungsten, Fluorescent and Flash presets, Auto and the picker set a real Kelvin from the camera's colour data. JPEGs keep the plain -100 to +100 scale.
 - **Local tools:** crop and straighten, spot removal (heal and clone), masks (linear, radial, brush, luminance and color range, with add, subtract and intersect).
 - **Library:** multiple photos with a filmstrip and a grid for culling (ratings, flags, filters).
 - **Presets:** search, save your own, import `.xmp`, `.lrtemplate` and `.zip` packs and `.cube` LUTs, export as `.xmp`. An Amount slider fades a preset in and out, tapping an applied preset again removes it, and presets replace each other instead of stacking. A few Fujifilm-inspired **Looks** are built in; they keep your exposure and white balance.
