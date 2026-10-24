@@ -606,6 +606,9 @@ function program(gl, vs, fs, attribs = ['aPos']) {
 
 const TYPE_CODE = { linear: 1, radial: 2, brush: 3 };
 
+/** How far the photo can be zoomed out below the fit-to-window size (so a big mask can be placed beyond the photo's edges). */
+const MIN_ZOOM = 0.1;
+
 export class Renderer {
   constructor(canvas, { preserve = false } = {}) {
     this.canvas = canvas;
@@ -731,7 +734,7 @@ export class Renderer {
   }
   clampView() {
     const v = this.view, [fx, fy] = this.fit();
-    v.zoom = Math.min(Math.max(v.zoom, 1), Math.max(this.zoom100() * 4, 1));
+    v.zoom = Math.min(Math.max(v.zoom, MIN_ZOOM), Math.max(this.zoom100() * 4, 1));
     const mx = Math.max(0, fx * v.zoom - 1), my = Math.max(0, fy * v.zoom - 1);
     v.px = mx ? Math.min(mx, Math.max(-mx, v.px)) : 0;
     v.py = my ? Math.min(my, Math.max(-my, v.py)) : 0;
