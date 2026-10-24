@@ -27,18 +27,6 @@ function whiteUnderAsShot(wb, K) {
   return mulv(wb.rgbCam, raw.map((v, i) => v * m[i]));
 }
 
-/** Estimated colour temperature the camera's as-shot white balance corresponds to. */
-export function asShotKelvin(wb) {
-  let best = 5500, bestE = Infinity;
-  for (let K = 2000; K <= 12000; K += 50) {
-    const [r, g, b] = whiteUnderAsShot(wb, K);
-    if (r <= 0 || g <= 0 || b <= 0) continue;
-    const e = Math.abs(Math.log(r / g)) + Math.abs(Math.log(b / g));
-    if (e < bestE) { bestE = e; best = K; }
-  }
-  return Math.round(best / 50) * 50;
-}
-
 // Kelvin <-> temp slider. The slider value that makes illuminant K look neutral rises with K (warmer picture for a higher K),
 // so a table of that value over K, built once per photo, converts both ways. Photos show Kelvin like a RAW editor does.
 const K_MIN = 2000, K_MAX = 25000, K_STEP = 50;
@@ -51,15 +39,18 @@ function kTable(wb) {
 }
 /** Colour temperature (K) a temp slider position stands for. */
 export function tempToKelvin(wb, temp) {
-  if (!temp) return asShotKelvin(wb);
   const { ks, ts } = kTable(wb);
   if (temp <= ts[0]) return ks[0];
   for (let i = 1; i < ts.length; i++) if (ts[i] >= temp) { const f = ts[i] === ts[i - 1] ? 0 : (temp - ts[i - 1]) / (ts[i] - ts[i - 1]); return Math.round((ks[i - 1] + f * K_STEP) / 10) * 10; }
   return ks[ks.length - 1];
 }
+/** Colour temperature the camera's as-shot white balance corresponds to: where the slider scale crosses 0, so the presets and the
+ *  slider agree (a camera whose white balance is off the daylight line is placed by temp and tint together). */
+export function asShotKelvin(wb) { return Math.round(tempToKelvin(wb, 0) / 50) * 50; }
+
 /** Temp slider position (-100..100) for a colour temperature. */
 export function kelvinToTemp(wb, K, precise = false) {
-  if (K === asShotKelvin(wb)) return 0;
+  if (K === asShotKelvin(wb)) return 0;                     // the as-shot white balance is exactly temp 0
   const { ks, ts } = kTable(wb);
   const x = Math.max(K_MIN, Math.min(K_MAX, K)), i = Math.min(ks.length - 2, Math.floor((x - K_MIN) / K_STEP));
   const f = (x - ks[i]) / K_STEP;
@@ -80,6 +71,6 @@ export const WB_PRESETS = [
 /** { temp, tint } (-100..100) for a preset on this camera. */
 export function presetValues(wb, preset) {
   const w = whiteUnderAsShot(wb, preset.K);
-  const { temp, tint } = wbFromLinear(w);
-  return { temp, tint: Math.max(-100, Math.min(100, Math.round(tint * 0.5) + preset.tintAdd)) };
+  const { temp, tint } = wbFromLinear(w, true);                    // temp unrounded, so the slider shows the preset's own Kelvin
+  return { temp: Math.round(temp * 100) / 100, tint: Math.max(-100, Math.min(100, Math.round(tint * 0.5) + preset.tintAdd)) };
 }
