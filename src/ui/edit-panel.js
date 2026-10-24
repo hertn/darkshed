@@ -13,9 +13,6 @@ import { lsGet, lsSet } from '../store.js';
 import { isEdited } from '../library.js';
 import { defaults as paramDefaults, defaultCrop } from '../params.js';
 import { toast } from './overlays.js';
-import { ensureCamFit } from '../camfit.js';
-import { BASE_PROFILES } from '../tuning.js';
-import { isRaw } from '../decode.js';
 
 const widgets = {};            // param key -> slider
 const sections = {};           // id -> { el, keys, curves, badge, pwr, reset }
@@ -25,7 +22,7 @@ let soloOn = lsGet('solo', '0') === '1';
 let curveEditor = null, histogram = null, bwBtn = null;
 let colorMixSel = lsGet('mixSel', 'red');
 const mixSliders = {}, checks = {};
-let profRow = null, profSelect = null, wbSelect = null, resetBtn = null, bwMobile = null;
+let wbSelect = null, resetBtn = null, bwMobile = null;
 let grading = null, mixSwatches = {};
 
 const P = () => curItem()?.params;
@@ -134,11 +131,6 @@ export function refresh() {
 
 // ---------- profile dropdown ----------
 function syncProfile() {
-  if (!profSelect) return;
-  const cur = curItem();
-  profRow.hidden = !(cur && isRaw(cur.file));       // profiles are a RAW thing: a JPEG already has its look baked in
-  profSelect.value = P()?.baseProfile || '';
-  if (cur && P()?.baseProfile === 'camera' && cur.camFit === undefined) ensureCamFit(cur).then(() => changed({ edit: true }));
   const it = curItem();
   if (resetBtn) resetBtn.disabled = !it || !isEdited(it);
 }
@@ -225,22 +217,6 @@ export function createEditPanel() {
   hw.append(hh, hc);
   head.append(hw);
   histogram = createHistogram(hc);
-  // Profile dropdown (RAW only): how the camera's raw data is rendered before your edits
-  profRow = document.createElement('div'); profRow.className = 'field-row'; profRow.style.padding = '0 16px 8px'; profRow.hidden = true;
-  const profLab = document.createElement('label'); profLab.textContent = 'Profile';
-  profSelect = document.createElement('select');
-  for (const [t, v] of BASE_PROFILES) { const o = document.createElement('option'); o.value = v; o.textContent = t; profSelect.append(o); }
-  profRow.append(profLab, profSelect);
-  head.append(profRow);
-  profSelect.onchange = async () => {
-    const it = curItem(); if (!it) return;
-    it.params.baseProfile = profSelect.value;
-    const label = profSelect.options[profSelect.selectedIndex].textContent;
-    if (profSelect.value === 'camera' && it.camFit === undefined) toast("Matching the camera's own look…");
-    if (profSelect.value === 'camera' && !(await ensureCamFit(it))) toast('This file has no usable camera preview, so Camera Matching has no effect.', 4000);
-    changed({ edit: true }); commit(`Profile: ${label}`);
-  };
-
   const row = document.createElement('div'); row.className = 'ph-row'; row.style.padding = '2px 12px 10px'; row.style.alignItems = 'center';
   const autoBtn = document.createElement('button'); autoBtn.className = 'btn small'; autoBtn.innerHTML = icon('auto', 15) + 'Auto';
   const doAuto = () => {

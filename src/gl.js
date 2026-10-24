@@ -1193,7 +1193,7 @@ export class Renderer {
     this.tex = this.smallTex;
     for (const st of states) {
       if (st.lut) this.setLut(st.lut);
-      this.passEdit({ p: st.p, masks: [] }, false, this.thumbFbo, { x: 0, y: 0, w, h, imgW: w, imgH: h, tex: { origin: [0, 0], size: [w, h] } });
+      this.passEdit({ p: st.p, masks: [], raw: st.raw, camera: st.camera, camFit: st.camFit }, false, this.thumbFbo, { x: 0, y: 0, w, h, imgW: w, imgH: h, tex: { origin: [0, 0], size: [w, h] } });
       const buf = new Uint8Array(w * h * 4);
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.thumbFbo);
       gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);

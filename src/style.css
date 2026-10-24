@@ -449,6 +449,7 @@ body.m .btn.m-only { display: inline-flex !important; }
 .pgroup.cur { display: block; }
 .pgroup .group-title { display: none; }
 .pgroup[hidden], .preset[hidden] { display: none !important; }
+.pane[data-pane=profiles] .preset span { white-space: normal; }
 .amount-box { transition: opacity .15s; }
 .amount-box.off { opacity: .35; }
 .pbar { display: flex; gap: 6px; padding: 2px 14px 10px; align-items: center; }
@@ -473,7 +474,7 @@ body.m .pane.searching .pgroup .group-title { display: block; }
   body.m .pgroup .preset-grid { display: flex; gap: 10px; overflow-x: auto; padding: 2px 14px 8px; scrollbar-width: none; }
   body.m .pgroup .preset-grid::-webkit-scrollbar { display: none; }
   body.m .pgroup .preset { flex: 0 0 82px; }
-  body.m .pane[data-pane=presets] .pane-title, body.m .pane[data-pane=presets] .pane-sub { display: none; }
+  body.m .pane[data-pane=presets] .pane-title, body.m .pane[data-pane=presets] .pane-sub, body.m .pane[data-pane=profiles] .pane-title { display: none; }
   body.m .pane[data-pane=presets] .btn-row { overflow-x: auto; flex-wrap: nowrap; padding: 6px 14px 4px; scrollbar-width: none; }
   body.m .pane[data-pane=presets] .btn-row .btn { flex: 0 0 auto; }
 }

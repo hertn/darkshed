@@ -9,6 +9,7 @@ const P = {
   edit: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   crop: '<path d="M7 3v14h14"/><path d="M3 7h14v14"/>',
   mask: '<circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><circle cx="12" cy="12" r="3.5"/>',
+  profile: '<circle cx="9" cy="9" r="5"/><circle cx="15" cy="9" r="5"/><circle cx="12" cy="15" r="5"/>',
   presets: '<path d="m12 3 2.2 5.2L20 9l-4.3 3.7L17 18.5 12 15.6 7 18.5l1.3-5.8L4 9l5.8-.8z"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/>',
   star: '<path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z" fill="currentColor"/>',
