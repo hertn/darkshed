@@ -4,6 +4,7 @@ import { modal, toast } from './overlays.js';
 import { sync, syncNow, ping } from '../sync.js';
 import { lsGet, lsSet } from '../store.js';
 import { storageInfo, clearStored, keepPrefs, applyLimitsNow } from '../persist.js';
+import { removeAll } from '../library.js';
 
 bus.on('open-settings', () => {
   let statusEl;
@@ -61,7 +62,7 @@ bus.on('open-settings', () => {
       refreshStorage();
     };
     clean.onclick = changed;
-    clr.onclick = async () => { if (!confirm('Delete every stored copy from this device? Your original files are not touched, but the library will be empty after a reload.')) return; await clearStored(); toast('Stored copies deleted'); refreshStorage(); };
+    clr.onclick = async () => { if (!confirm('Delete every stored copy from this device? The photos open in DarkShed are removed too. Your original files are not touched.')) return; await clearStored(); removeAll(); toast('Stored copies deleted'); refreshStorage(); };
     refreshStorage();
     const tips = document.createElement('p'); tips.className = 'hint'; tips.style.margin = '10px 20px 6px';
     tips.textContent = 'Install: on iPhone / iPad use Share → Add to Home Screen; on desktop Chrome use the install icon in the address bar.';

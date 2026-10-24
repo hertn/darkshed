@@ -265,5 +265,8 @@ export function removeSelected() {
   else { app.cur = app.items.findIndex((x) => x.id === curId); markActive(); }
 }
 
+/** Take every photo out of the library at once (used after "Delete all stored copies"). */
+export function removeAll() { app.sel = new Set(app.items.map((x) => x.id)); removeSelected(); }
+
 export async function saveAll() { await Promise.all(app.items.map((it) => saveNow(it))); }
 export { markActive };
