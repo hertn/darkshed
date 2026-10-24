@@ -6,6 +6,7 @@ import { loadFull, lutLinear16, ONE } from './decode.js';
 import { patchExif, injectExif } from './exif.js';
 import { getLut } from './looks.js';
 import { zip } from './zip.js';
+import { ensureCamFit } from './camfit.js';
 import { patchImage, accessRgb16, accessRgba8 } from './spots.js';
 import { displayP3Profile, injectIccJpeg, injectIccPng } from './icc.js';
 import { tiff16 } from './tiff.js';
@@ -43,6 +44,7 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
     check(); mark('decode');
     const p3 = wantP3 && full.kind === 'raw';
     const FW = full.width, FH = full.height, A = FW / FH;
+    if (item.params.baseProfile === 'camera') { onProgress(0.03, 'Matching the camera look…'); await ensureCamFit(item); }
     const st = renderState(item);
     if (full.camera) st.camera = full.camera;
     const geo = makeGeo(item.crop, A, false);

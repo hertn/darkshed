@@ -5,7 +5,7 @@
 // Pass 1 can render any horizontal region of the image, which is how full-resolution export works in strips.
 
 import { HSL_BANDS, GRADE_ZONES, MAX_MASKS, MAX_BRUSH_MASKS, MAX_COMPS, identityCurves } from './params.js';
-import { TUNE, rawCamStops, rawCamCurve } from './tuning.js';
+import { TUNE, BASE_LOOKS, rawCamStops, rawCamCurve } from './tuning.js';
 const colMajor = (k) => [k[0], k[3], k[6], k[1], k[4], k[7], k[2], k[5], k[8]];   // rows -> GL's column order
 import { evalCurve, curvesActive, curveIsIdentity } from './curves-math.js';
 
@@ -166,6 +166,14 @@ vec3 dec(vec3 p) {
   return mix(p / 12.92, pow((p + 0.055) / 1.055, vec3(2.4)), step(0.04045, p));
 }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+uniform vec2 uProf;         // RAW base profile look: contrast, saturation
+vec3 profAdj(vec3 p, vec2 k) {
+  vec3 q = clamp(p, 0.0, 1.0);
+  vec3 sc = q * q * (3.0 - 2.0 * q);
+  q = k.x >= 0.0 ? mix(q, sc, k.x) : mix(q, vec3(0.5), -k.x * 0.5);
+  float l = dot(q, vec3(0.2126, 0.7152, 0.0722));
+  return max(l + (q - l) * k.y, 0.0) + (p - clamp(p, 0.0, 1.0));
+}
 uniform bool uRawCc;
 uniform vec3 uRawCcK[17];   // per-camera correction after the base curve
 vec3 camCurve(vec3 p) {
@@ -298,7 +306,7 @@ void main() {
   }
   if (uRawOn) c *= exp2(uRawOff);
   c = toneLin(c, uGA, uGB);
-  vec3 p = uRawOn ? hlRaw(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uGA.z) : enc(c);
+  vec3 p = uRawOn ? hlRaw(profAdj(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uProf), uGA.z) : enc(c);
   p = toneEnc(p, uGA, uGB);
 
   // local adjustments
@@ -931,7 +939,9 @@ export class Renderer {
     gl.uniform1f(p.u('uPPe'), TUNE.ppExp);
     gl.uniform1i(p.u('uRawOn'), state.raw ? 1 : 0);
     gl.uniform1f(p.u('uRawOff'), rawCamStops(state.camera));
-    { const cc = state.raw ? rawCamCurve(state.camera) : null; gl.uniform1i(p.u('uRawCc'), cc ? 1 : 0); if (cc) gl.uniform3fv(p.u('uRawCcK'), cc); else gl.uniform3fv(p.u('uRawCcK'), new Float32Array(51)); }
+    const bp = state.raw ? (par.baseProfile || '') : '';
+    gl.uniform2f(p.u('uProf'), ...(BASE_LOOKS[bp] || [0, 1]));
+    { const cc = !state.raw ? null : bp === 'camera' ? state.camFit : rawCamCurve(state.camera); gl.uniform1i(p.u('uRawCc'), cc ? 1 : 0); if (cc) gl.uniform3fv(p.u('uRawCcK'), cc); else gl.uniform3fv(p.u('uRawCcK'), new Float32Array(51)); }
     gl.uniform2f(p.u('uRawHl'), TUNE.rawHlPos, TUNE.rawHlNeg);
     gl.uniform3fv(p.u('uRB'), TUNE.rawBase);
     gl.uniform2f(p.u('uRBx'), TUNE.rawX0, TUNE.rawDx);
