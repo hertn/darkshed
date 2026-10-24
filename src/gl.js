@@ -127,6 +127,18 @@ uniform vec4 uGt;           // grading: luminance strength, zone falloff at blen
 uniform vec2 uMk;           // shadow/highlight mask: share of the brightest channel (vs luma); white balance: share of luminance kept constant
 uniform mat3 uWmT, uWmN;    // white balance matrices at temperature +25 and tint +20
 uniform float uPPc;         // share of the tone curve done in ProPhoto primaries
+uniform bool uRawOn;        // RAW file: Lightroom's camera-profile base curve replaces the plain sRGB encode
+uniform vec3 uRB[25];
+uniform vec2 uRBx;          // log2 of the first knot, stops between knots
+vec3 baseEnc(vec3 c) {
+  vec3 x = clamp((log2(max(c, vec3(1e-6))) - uRBx.x) / uRBx.y, 0.0, 23.999);
+  vec3 r;
+  for (int k = 0; k < 3; k++) {
+    int i = int(x[k]); float f = x[k] - float(i);
+    r[k] = mix(uRB[i][k], uRB[i + 1][k], f);
+  }
+  return r;
+}
 uniform float uPPe;         // 1 = exposure stage in ProPhoto
 uniform float uCtP;         // contrast pivot warp (1 = pivot at mid-grey)
 uniform float uKnee;        // exposure highlight roll-off starts here (linear)
@@ -265,7 +277,7 @@ void main() {
     c.g *= exp2(-uCalTint * 0.6 * sh);
   }
   c = toneLin(c, uGA, uGB);
-  vec3 p = toneEnc(enc(c), uGA, uGB);
+  vec3 p = toneEnc(uRawOn ? baseEnc(c) : enc(c), uGA, uGB);
 
   // local adjustments
   for (int i = 0; i < 8; i++) {
@@ -889,15 +901,18 @@ export class Renderer {
     gl.uniform4f(p.u('uTn'), 0, 0, TUNE.hlK, TUNE.hlLo);
     gl.uniform1f(p.u('uGrdK'), TUNE.grdK);
     gl.uniform4f(p.u('uGt'), TUNE.gdL, TUNE.gdA, TUNE.gdB, TUNE.gdF);
-    gl.uniform2f(p.u('uMk'), TUNE.msK, TUNE.wbL);
+    gl.uniform2f(p.u('uMk'), TUNE.msK, state.raw ? TUNE.rawWbL : TUNE.wbL);
     gl.uniformMatrix3fv(p.u('uWmT'), false, colMajor(TUNE.wbKt)); gl.uniformMatrix3fv(p.u('uWmN'), false, colMajor(TUNE.wbKn));
     gl.uniform1f(p.u('uKnee'), TUNE.knee);
     gl.uniform1f(p.u('uCtP'), TUNE.ctP);
     gl.uniform1f(p.u('uPPe'), TUNE.ppExp);
+    gl.uniform1i(p.u('uRawOn'), state.raw ? 1 : 0);
+    gl.uniform3fv(p.u('uRB'), TUNE.rawBase);
+    gl.uniform2f(p.u('uRBx'), TUNE.rawX0, TUNE.rawDx);
     gl.uniform1f(p.u('uPPc'), TUNE.ppCurve);
     gl.uniform2f(p.u('uWf'), TUNE.wbF, TUNE.wbA);
     gl.uniform4f(p.u('uTn4'), TUNE.vbK, TUNE.saK, TUNE.wbS, TUNE.satLin);
-    gl.uniform4f(p.u('uTn2'), TUNE.exK, TUNE.ctK, TUNE.shK, TUNE.shHi);
+    gl.uniform4f(p.u('uTn2'), state.raw ? TUNE.rawExK : TUNE.exK, TUNE.ctK, TUNE.shK, TUNE.shHi);
     gl.uniform4f(p.u('uTn3'), TUNE.whK, TUNE.blK, TUNE.hlTop, TUNE.shLift);
     gl.uniform1i(p.u('uGrdOn'), grdOn ? 1 : 0);
     gl.uniform1i(p.u('uCurveOn'), curvesActive(par.curves) ? 1 : 0);
