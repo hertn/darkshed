@@ -34,6 +34,11 @@ export const TUNE = {
   ctP: 1.4,      // contrast pivot warp (1 = mid-grey)
   ppExp: 1,      // exposure and its highlight roll-off in ProPhoto (1) or sRGB (0)
   ppCurve: 1,    // tone curves per channel in ProPhoto primaries (1) or sRGB (0)
+  rawExK: 0.96,  // RAW files: stops per exposure unit (Lightroom's RAW exposure is 1:1)
+  rawX0: -11,    // RAW base tone curve: log2 of the linear value at the first knot, then every rawDx stops
+  rawDx: 0.5,
+  rawWbL: 1,     // RAW white balance keeps the brightness (1 = fully)
+  rawBase: [0.0022, 0.0022, 0.0019, 0.0025, 0.0025, 0.0022, 0.0029, 0.0029, 0.0025, 0.0035, 0.0035, 0.0029, 0.0045, 0.0045, 0.0036, 0.0063, 0.0062, 0.0054, 0.0096, 0.0093, 0.0093, 0.0147, 0.0143, 0.0149, 0.0222, 0.0219, 0.0223, 0.0334, 0.0329, 0.0325, 0.0493, 0.0483, 0.0475, 0.0721, 0.0706, 0.0705, 0.106, 0.1039, 0.1046, 0.1545, 0.1514, 0.1527, 0.2171, 0.2144, 0.2162, 0.2873, 0.2886, 0.2843, 0.3621, 0.3651, 0.366, 0.4805, 0.4777, 0.4723, 0.6145, 0.6127, 0.6095, 0.7512, 0.7465, 0.7636, 0.9054, 0.9088, 0.9001, 0.9468, 0.9487, 0.9438, 0.9764, 0.9772, 0.975, 0.9941, 0.9943, 0.9938, 1, 1, 1],   // encoded value (0..1) per knot, red / green / blue
   hlTop: 0.998,  // brightness where the highlights slider fades out again (white stays white)
 };
 // (fitted on one preset and photo against Lightroom's own export; DarkShed's built-in looks were rescaled to keep their appearance)
