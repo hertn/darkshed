@@ -145,10 +145,10 @@ export function createPresetsPanel({ editSync }) {
         });
       }
     }
-    const g1 = section('Premade');
+    const g1 = section('Looks');
     tile(g1, 'None', lookState({}, ''), () => applyLookPreset({}, 'None', ''));
     for (const l of BUILTIN) tile(g1, l.name, lookState(l.patch, 'b:' + l.name), () => applyLookPreset(l.patch, l.name, 'b:' + l.name), { active: base.profile === 'b:' + l.name });
-    hint('Approximations built from the sliders. They are not Fujifilm\'s own film simulations.');
+    hint('Looks keep your exposure and white balance. Approximations built from the sliders, not Fujifilm\'s own film simulations.');
 
     if (luts.length) {
       const g2 = section('LUTs');
