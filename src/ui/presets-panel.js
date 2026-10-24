@@ -56,9 +56,15 @@ export function createPresetsPanel({ editSync }) {
     onInput: (v) => { const it = curItem(), st = amountState; if (!it || !st || st.id !== it.id) return; blendParams(it.params, st.base, st.target, v / 100); st.cur = clone(it.params); editSync(); changed({ edit: true }); },
     onChange: () => commit('Preset amount'),
   });
-  amountBox.append(amount.el); amountBox.style.display = 'none';
+  amountBox.className = 'amount-box off'; amountBox.inert = true; amountBox.title = 'Apply a preset or look to adjust its strength';
+  amountBox.append(amount.el);
   el.append(amountBox);
-  const showAmount = () => { const it = curItem(); amountBox.style.display = amountState && it && amountState.id === it.id ? '' : 'none'; };
+  // always in place so the list never jumps; greyed out until a preset or look has been applied to this photo
+  const showAmount = () => {
+    const it = curItem(), on = !!(amountState && it && amountState.id === it.id);
+    amountBox.classList.toggle('off', !on); amountBox.inert = !on;
+    if (!on) amount.set(100);
+  };
 
   const body = document.createElement('div'); el.append(body);
   const noMatch = document.createElement('p'); noMatch.className = 'hint'; noMatch.style.margin = '8px 16px'; noMatch.hidden = true; noMatch.textContent = 'No presets match.'; el.append(noMatch);

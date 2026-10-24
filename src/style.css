@@ -449,6 +449,8 @@ body.m .btn.m-only { display: inline-flex !important; }
 .pgroup.cur { display: block; }
 .pgroup .group-title { display: none; }
 .pgroup[hidden], .preset[hidden] { display: none !important; }
+.amount-box { transition: opacity .15s; }
+.amount-box.off { opacity: .35; }
 .pbar { display: flex; gap: 6px; padding: 2px 14px 10px; align-items: center; }
 .pbar input { flex: 1; min-width: 0; }
 .pbar .btn { flex: 0 0 auto; }
