@@ -19,7 +19,7 @@ export function createProfilesPanel() {
   const el = document.createElement('div'); el.className = 'pane'; el.dataset.pane = 'profiles';
   el.innerHTML = '<div class="pane-title">Profiles</div>';
   const msg = document.createElement('p'); msg.className = 'hint'; msg.style.margin = '4px 16px 10px';
-  const note = document.createElement('p'); note.className = 'hint'; note.style.margin = '0 16px 10px';
+  const note = document.createElement('p'); note.className = 'hint pnote'; note.style.margin = '0 16px 10px';
   const wrap = document.createElement('div'); wrap.className = 'pgroup cur';
   const grid = document.createElement('div'); grid.className = 'preset-grid'; wrap.append(grid);
   el.append(msg, wrap, note);
@@ -41,7 +41,7 @@ export function createProfilesPanel() {
     const cur = it.params.baseProfile || '';
     for (const [label, v] of BASE_PROFILES) {
       const d = document.createElement('div'); d.className = 'preset' + (v === cur ? ' on' : ''); d.title = NOTES[v];
-      const c = document.createElement('canvas'); c.width = 96; c.height = 96;
+      const c = document.createElement('canvas'); c.width = 96; c.height = 72;
       const s = document.createElement('span'); s.textContent = label;
       d.append(c, s);
       d.onclick = () => choose(v, label);
