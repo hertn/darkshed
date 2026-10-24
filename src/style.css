@@ -197,8 +197,8 @@ body.m .desk-only, .m-only.hint { display: none; }
 body.m .hint.m-only { display: block !important; }
 .field-row { display: flex; gap: 8px; padding: 6px 16px; align-items: center; }
 .field-row label { color: var(--fg2); font-size: 12px; width: 76px; flex: none; }
-select, input[type=text], input[type=number], input[type=password] { background: var(--well); color: var(--fg); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 8px; font: inherit; min-width: 0; }
-select:focus, input[type=text]:focus, input[type=number]:focus { outline: 0; border-color: var(--acc); }
+select, input[type=text], input[type=search], input[type=number], input[type=password] { background: var(--well); color: var(--fg); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 8px; font: inherit; min-width: 0; }
+select:focus, input[type=text]:focus, input[type=search]:focus, input[type=number]:focus { outline: 0; border-color: var(--acc); }
 .field-row select, .field-row input { flex: 1; }
 .btn-row { display: flex; gap: 6px; padding: 6px 16px; flex-wrap: wrap; }
 
@@ -448,6 +448,23 @@ body.m .btn.m-only { display: inline-flex !important; }
 .pgroup { display: none; }
 .pgroup.cur { display: block; }
 .pgroup .group-title { display: none; }
+.pgroup[hidden], .preset[hidden] { display: none !important; }
+.pbar { display: flex; gap: 6px; padding: 2px 14px 10px; align-items: center; }
+.pbar input { flex: 1; min-width: 0; }
+.pbar .btn { flex: 0 0 auto; }
+/* desktop: every category is a collapsible section, own presets first; the chips are for phones */
+body:not(.m) .pchips { display: none; }
+body:not(.m) .pgroup { display: block; }
+body:not(.m) .pgroup .group-title { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; -webkit-user-select: none; }
+body:not(.m) .pgroup .group-title::after { content: '▾'; font-size: 12px; transition: transform .15s; }
+body:not(.m) .pgroup.collapsed .group-title::after { transform: rotate(-90deg); }
+body:not(.m) .pgroup.collapsed .preset-grid, body:not(.m) .pgroup.collapsed .hint { display: none; }
+body:not(.m) .pane.searching .pgroup.collapsed .preset-grid { display: grid; }
+/* searching shows every matching category, on every screen */
+.pane.searching .pchips { display: none; }
+.pane.searching .pgroup .hint { display: none; }
+body.m .pane.searching .pgroup { display: block; }
+body.m .pane.searching .pgroup .group-title { display: block; }
 @media (max-width: 860px) {
   .pchips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .pchips::-webkit-scrollbar { display: none; }
