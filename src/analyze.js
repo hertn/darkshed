@@ -1,4 +1,5 @@
 // Image analysis on the decoded proxy (RGBA half-float, linear): white balance picking, auto tone.
+import { TUNE } from './tuning.js';
 const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
 export function h2f(h) {
   const s = (h & 0x8000) << 16, e = (h >> 10) & 0x1f, m = h & 0x3ff;
@@ -27,9 +28,8 @@ export function samplePatch(img, u, v, radius = 3) {
 /** Temp / tint (-100..100) that make a linear RGB value neutral under the shader's white balance model. */
 export function wbFromLinear([r, g, b]) {
   r = Math.max(r, 1e-4); g = Math.max(g, 1e-4); b = Math.max(b, 1e-4);
-  const t = Math.log2(b / r) / 3.8;
-  const target = r * Math.pow(2, 1.9 * t);
-  const n = -Math.log2(target / g) / 0.7;
+  const t = Math.log2(b / r) / (TUNE.wbT + TUNE.wbB);
+  const n = (Math.log2(g / r) + t * (TUNE.wbC - TUNE.wbT)) / TUNE.wbN;
   const clamp = (x) => Math.max(-100, Math.min(100, Math.round(x * 100)));
   return { temp: clamp(t), tint: clamp(n) };
 }

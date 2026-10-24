@@ -3,12 +3,14 @@
 //   .lrtemplate   Lightroom Classic's older Lua-table format
 //   .zip          preset packs (any mix of the above, folders become groups)
 // A preset only changes the settings it lists. Settings this editor has no equivalent for are reported, not dropped silently.
-import { HSL_BANDS, GRADE_ZONES, identityCurves, KEY_DEFAULT } from './params.js';
+import { HSL_BANDS, GRADE_ZONES, ALL_PARAMS, identityCurves, KEY_DEFAULT } from './params.js';
 import { evalCurve } from './curves-math.js';
 
 const CRS = 'http://ns.adobe.com/camera-raw-settings/1.0/';
 const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 const BANDS = ['Red', 'Orange', 'Yellow', 'Green', 'Aqua', 'Blue', 'Purple', 'Magenta'];
+
+const RANGE = Object.fromEntries(ALL_PARAMS.map((p) => [p[0], [p[2], p[3]]]));
 
 // crs name -> [our key, scale]; value_ours = value_crs * scale
 const SIMPLE = {
@@ -19,7 +21,7 @@ const SIMPLE = {
   PostCropVignetteAmount: ['vigAmount', 1], PostCropVignetteMidpoint: ['vigMidpoint', 1], PostCropVignetteFeather: ['vigFeather', 1], PostCropVignetteRoundness: ['vigRoundness', 1],
   Sharpness: ['sharpAmount', 0.7], SharpenRadius: ['sharpRadius', 1], SharpenEdgeMasking: ['sharpMasking', 1],
   LuminanceSmoothing: ['nrLuma', 1], ColorNoiseReduction: ['nrColor', 1],
-  IncrementalTemperature: ['temp', 1], IncrementalTint: ['tint', 100 / 150],
+  IncrementalTemperature: ['temp', 1], IncrementalTint: ['tint', 1],
   ColorGradeBlending: ['grade_blend', 1],
   LensManualDistortionAmount: ['distortion', 1], VignetteAmount: ['lensVignette', 1],
   DefringePurpleAmount: ['defringePurple', 5], DefringeGreenAmount: ['defringeGreen', 5],
@@ -68,7 +70,7 @@ const pointsFrom = (v) => {
 export function crsToPatch(map) {
   const patch = {}, ignored = new Set();
   for (const [k, v] of Object.entries(map)) {
-    if (SIMPLE[k]) { const n = num(v); if (n !== undefined) patch[SIMPLE[k][0]] = Math.round(n * SIMPLE[k][1] * 1000) / 1000; continue; }
+    if (SIMPLE[k]) { const n = num(v); if (n !== undefined) { const key = SIMPLE[k][0], [lo, hi] = RANGE[key] || [-Infinity, Infinity]; patch[key] = clampTo(Math.round(n * SIMPLE[k][1] * 1000) / 1000, lo, hi); } continue; }
     for (const [re, label] of UNSUPPORTED) if (re.test(k)) ignored.add(label);
   }
   // HSL / grayscale mixer
@@ -82,20 +84,18 @@ export function crsToPatch(map) {
     patch.bw = truthy(map.ConvertToGrayscale) ? 1 : 0;
     if (patch.bw) BANDS.forEach((B, i) => { const n = num(map['GrayMixer' + B]); if (n !== undefined) patch[`hsl_${HSL_BANDS[i][0]}_lum`] = n; });
   }
-  // colour grading (new) or split toning (old)
+  // colour grading (new) and split toning (old). Lightroom keeps both in one file: split toning is the shadow / highlight grade
+  // until a ColorGrade value for the same zone says otherwise, so each zone takes whichever one is present.
   const zones = { Shadow: 'shadow', Midtone: 'mid', Highlight: 'high', Global: 'global' };
-  let graded = false;
   for (const [Z, z] of Object.entries(zones)) {
     for (const [crs, kind] of [['Hue', 'hue'], ['Sat', 'sat'], ['Lum', 'lum']]) {
-      const n = num(map[`ColorGrade${Z}${crs}`]); if (n !== undefined) { patch[`grade_${z}_${kind}`] = n; graded = true; }
+      const n = num(map[`ColorGrade${Z}${crs}`]); if (n !== undefined) patch[`grade_${z}_${kind}`] = n;
     }
   }
-  if (!graded) {
-    for (const [crs, z] of [['Shadow', 'shadow'], ['Highlight', 'high']]) {
-      const h = num(map[`SplitToning${crs}Hue`]), s = num(map[`SplitToning${crs}Saturation`]);
-      if (h !== undefined) patch[`grade_${z}_hue`] = h;
-      if (s !== undefined) patch[`grade_${z}_sat`] = s;
-    }
+  for (const [crs, z] of [['Shadow', 'shadow'], ['Highlight', 'high']]) {
+    const h = num(map[`SplitToning${crs}Hue`]), s = num(map[`SplitToning${crs}Saturation`]);
+    if (h !== undefined && patch[`grade_${z}_hue`] === undefined) patch[`grade_${z}_hue`] = h;
+    if (s !== undefined && patch[`grade_${z}_sat`] === undefined) patch[`grade_${z}_sat`] = s;
   }
   // tone curves
   const curves = {};

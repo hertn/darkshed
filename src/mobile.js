@@ -4,10 +4,12 @@
 import { app, bus } from './app.js';
 import { icon } from './ui/icons.js';
 import { lsGet, lsSet } from './store.js';
+import { gradingShown } from './ui/grading.js';
 
 const MQ = window.matchMedia('(max-width: 860px)');
 const SECTIONS = [['light', 'Light', 'sun'], ['color', 'Color', 'palette'], ['effects', 'Effects', 'fx'], ['detail', 'Detail', 'detail'], ['optics', 'Optics', 'lens'], ['calibration', 'Calibrate', 'calib']];
-const TITLES = { curves: 'Curves' };      // reached from the Light section, not from the dock
+const TITLES = { curves: 'Curves', grading: 'Color grading', hsl: 'HSL' };      // reached from the Light / Color sections, not from the dock
+const PARENT = { curves: 'light', grading: 'color', hsl: 'color' };                // the dock tool each of those belongs to
 const TOOLS = [['crop', 'Crop', 'crop'], ['spots', 'Heal', 'heal'], ['mask', 'Masks', 'mask'], ['presets', 'Presets', 'presets'], ['info', 'Info', 'info']];
 
 export function initMobile({ setToolId }) {
@@ -40,24 +42,29 @@ export function initMobile({ setToolId }) {
   // ----- behaviour -----
   function showSection(id) {
     state.section = id; lsSet('mSection', id);
+    const secId = id === 'hsl' ? 'color' : id;                     // HSL is a view of the Color section
     for (const d of panel.querySelectorAll('details.sec')) {
-      const on = d.dataset.sec === id;
+      const on = d.dataset.sec === secId;
       d.classList.toggle('mshow', on);
+      d.classList.toggle('m-hsl', on && id === 'hsl');
+      d.classList.toggle('msub', on && !!PARENT[id]);         // a view opened from a button: Reset on the left, Done on the right
       if (on) d.open = true;
     }
+    if (id === 'hsl') for (const sub of panel.querySelectorAll('details.sec[data-sec=color] details.sub')) sub.open = true;
     handle.querySelector('.sh-title').textContent = TITLES[id] || SECTIONS.find((s) => s[0] === id)?.[1] || '';
     floatCurve(id === 'curves' && state.open);
+    if (id === 'grading') gradingShown();
   }
   function setOpen(v) { state.open = v; lsSet('mSheetOpen', v ? '1' : '0'); document.body.classList.toggle('sheet-closed', !v); floatCurve(state.section === 'curves' && v && app.tool === 'edit'); setTimeout(() => window.dispatchEvent(new Event('resize')), 50); }
   function paintDock() {
     let key = app.tool === 'edit' ? 'sec:' + state.section : app.tool;
-    if (key === 'sec:curves') key = 'sec:light';                  // Curves is part of Light
+    if (key.startsWith('sec:') && PARENT[key.slice(4)]) key = 'sec:' + PARENT[key.slice(4)];     // Curves is part of Light, Grading part of Color
     for (const [k, b] of items) b.classList.toggle('on', k === key && state.open);
     items.get(key)?.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
   function choose(key, fromDock = true) {
     const cur = app.tool === 'edit' ? 'sec:' + state.section : app.tool;
-    const active = cur === key || (cur === 'sec:curves' && key === 'sec:light');
+    const active = cur === key || (cur.startsWith('sec:') && 'sec:' + PARENT[cur.slice(4)] === key);
     if (fromDock && active && state.open) { setOpen(false); paintDock(); return; }   // tap the open tool again: collapse the sheet
     if (key.startsWith('sec:')) { showSection(key.slice(4)); setToolId('edit'); }
     else { floatCurve(false); setToolId(key); handle.querySelector('.sh-title').textContent = TOOLS.find((t) => t[0] === key)?.[1] || ''; }
@@ -74,7 +81,7 @@ export function initMobile({ setToolId }) {
   const lightTail = panel.querySelector('details.sec[data-sec=light] > summary .tail');
   const curvesTail = panel.querySelector('details.sec[data-sec=curves] > summary .tail');
   lightTail?.prepend(mkSmall('curves-btn', 'curve', 'Curves', () => choose('sec:curves', false)));
-  curvesTail?.prepend(mkSmall('back-btn', 'sun', 'Light', () => choose('sec:light', false)));
+  curvesTail?.append(mkSmall('done-btn', 'check', 'Done', () => choose('sec:light', false)));
   const curveCv = panel.querySelector('canvas.curve');
   const curveHome = curveCv ? { parent: curveCv.parentNode, next: curveCv.nextSibling } : null;
   function sizeCurve() {
@@ -93,8 +100,17 @@ export function initMobile({ setToolId }) {
   }
   new ResizeObserver(sizeCurve).observe(view);
 
+  // ----- colour grading: a "Grading" button in the Color section, like Lightroom mobile -----
+  {
+    const tail = panel.querySelector('details.sec[data-sec=color] > summary .tail');
+    tail?.prepend(mkSmall('grade-btn', 'wheel', 'Grading', () => choose('sec:grading', false)));
+    tail?.prepend(mkSmall('hsl-btn', 'lum', 'HSL', () => choose('sec:hsl', false)));
+    tail?.append(mkSmall('done-btn hsl-back', 'check', 'Done', () => choose('sec:color', false)));
+  }
+  panel.querySelector('details.sec[data-sec=grading] > summary .tail')?.append(mkSmall('done-btn', 'check', 'Done', () => choose('sec:color', false)));
+
   // ----- histogram becomes a small overlay on the photo -----
-  const histWrap = () => panel.querySelector('.hist-wrap');
+  const histWrap = () => document.querySelector('.hist-wrap');      // it lives over the photo while floating, so look everywhere
   const head = () => panel.querySelector('.edit-head');
   const hide = lsGet('mHist', '1') === '0';
   function floatHist(on) {

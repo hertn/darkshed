@@ -29,6 +29,8 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1;
   const er = new Renderer(canvas, { preserve: true });
+  const marks = [['start', performance.now()]];
+  const mark = (name) => marks.push([name, performance.now()]);
   const check = () => { if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError'); };
   try {
     const wantTiff = opts.format === 'image/tiff';
@@ -38,7 +40,7 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
       quality: opts.rawQuality, maxDim: Math.min(16384, er.maxTex), outputColor: wantP3 ? 7 : 1,
       onStatus: (s) => onProgress(0.02, s),
     });
-    check();
+    check(); mark('decode');
     const p3 = wantP3 && full.kind === 'raw';
     const FW = full.width, FH = full.height, A = FW / FH;
     const st = renderState(item);
@@ -103,7 +105,7 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
     }
     full.rgb16 = null;
     er.endFull();
-    check();
+    check(); mark('render');
     const outSharp = OUT_SHARP[opts.outSharp || 'none'] || 0;
     const icc = p3 ? displayP3Profile() : null;
 
@@ -124,11 +126,11 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
       onProgress(0.9, 'Encoding JPEG…');
       const enc = jpegEncoder(outW, outH, { quality: Math.round(opts.quality * 100), subsample: opts.quality < 0.93 });
       await er.finishFullBands8(st, outW, outH, async (rows8, top, n) => {
-        enc.push(rows8, n);
+        await enc.push(rows8, n);
         onProgress(0.9 + 0.09 * ((top + n) / outH), 'Encoding JPEG…');
         check(); await tick();
       }, { outSharp });
-      blob = enc.finish();
+      blob = await enc.finish();
     } else {
       onProgress(0.93, 'Encoding…');
       er.finishFull(st, outW, outH, { outSharp });
@@ -139,6 +141,9 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
     if (icc && blob.type === 'image/jpeg') blob = await injectIccJpeg(blob, icc);
     else if (icc && blob.type === 'image/png') blob = await injectIccPng(blob, icc);
     else if (icc) note += 'Display P3 profile can only be embedded in JPEG, PNG and TIFF. ';
+    mark('encode');
+    // slow exports say where the time went (decode / edit / encode), so a phone can be tuned from this line
+    if (marks.at(-1)[1] - marks[0][1] > 20000) note += `Time: ${marks.slice(1).map(([n, t], i) => `${n} ${((t - marks[i][1]) / 1000).toFixed(0)}s`).join(', ')}. `;
     const ext = EXT[blob.type] || 'jpg';
     if (type !== blob.type) note += `${type.split('/')[1].toUpperCase()} is not supported by this browser; saved as ${ext.toUpperCase()}. `;
     return { blob, name: `${item.name}${opts.suffix}.${ext}`, w: outW, h: outH, note };
