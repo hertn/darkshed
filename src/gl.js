@@ -6,6 +6,7 @@
 
 import { HSL_BANDS, GRADE_ZONES, MAX_MASKS, MAX_BRUSH_MASKS, MAX_COMPS, identityCurves } from './params.js';
 import { TUNE } from './tuning.js';
+const colMajor = (k) => [k[0], k[3], k[6], k[1], k[4], k[7], k[2], k[5], k[8]];   // rows -> GL's column order
 import { evalCurve, curvesActive, curveIsIdentity } from './curves-math.js';
 
 export { evalCurve, curvesActive, curveIsIdentity };
@@ -123,8 +124,9 @@ uniform vec4 uTn;           // slider strengths (see tuning.js): wb temp, wb tin
 uniform float uGrdK;
 uniform vec4 uGt;           // grading: luminance strength, zone falloff at blending 0 and 100
 uniform vec2 uMk;           // shadow/highlight mask: share of the brightest channel (vs luma); white balance: share of luminance kept constant
-uniform vec2 uWb;           // blue per temp, green per temp
-uniform vec3 uTn4;          // vibrance, saturation strength
+uniform mat3 uWmT, uWmN;    // white balance matrices at temperature +25 and tint +20
+uniform vec2 uWf;           // white balance fade towards the highlights: amount, start brightness
+uniform vec4 uTn4;          // vibrance, saturation strength
 uniform vec4 uTn2;          // exposure, contrast, shadows, shadows range
 uniform vec4 uTn3;          // whites, blacks, highlights fade-out, shadows lift
 uniform float uLutAmt, uLutSize, uLensVig, uCalTint;
@@ -166,13 +168,20 @@ float curveAt(float v, int ch) {
   return ch == 0 ? t.r : (ch == 1 ? t.g : t.b);
 }
 
+// white balance matrix for a slider position: the colour change Lightroom makes at +25 temperature / +20 tint (uWmT, uWmN),
+// scaled to the slider (gains follow a power law, the cross-channel terms scale linearly)
+mat3 wbMat(mat3 K, float t) {
+  vec3 d = vec3(K[0][0], K[1][1], K[2][2]);
+  return mat3(pow(d.x, t), 0.0, 0.0, 0.0, pow(d.y, t), 0.0, 0.0, 0.0, pow(d.z, t)) + (K - mat3(d.x, 0.0, 0.0, 0.0, d.y, 0.0, 0.0, 0.0, d.z)) * t;
+}
 // linear-light part of an adjustment set: white balance, exposure (+ highlight shoulder), shadows / highlights
 vec3 toneLin(vec3 c, vec4 A, vec4 B) {
-  vec3 wb = exp2(vec3(B.z * uTn.x, B.z * uWb.y - B.w * uTn.y, -B.z * uWb.x));
-  wb /= mix(1.0, luma(wb), uMk.y);
-  c *= wb;
+  float wf = 1.0 - uWf.x * smoothstep(uWf.y, 1.0, luma(enc(c)));
+  mat3 wm = wbMat(uWmT, B.z * 4.0 * wf) * wbMat(uWmN, B.w * 5.0 * wf);
+  wm /= mix(1.0, luma(wm * vec3(1.0)), uMk.y);
+  c = wm * c;
   float ex = A.x * uTn2.x;
-  float W = exp2(max(ex, 0.0)) * mix(1.0, max(1.0, max(wb.r, max(wb.g, wb.b))), uTn4.z);
+  float W = exp2(max(ex, 0.0)) * mix(1.0, max(1.0, max(wm[0][0] + wm[1][0] + wm[2][0], max(wm[0][1] + wm[1][1] + wm[2][1], wm[0][2] + wm[1][2] + wm[2][2]))), uTn4.z);
   c *= exp2(ex);
   const float KNEE = 0.5;
   float a = (W - 1.0) / (1.0 - KNEE);
@@ -204,7 +213,9 @@ vec3 colorAdj(vec3 p, vec4 C) {
   float mn = min(p.r, min(p.g, p.b));
   float sat = (mx - mn) / max(mx, 1e-4);
   float k = max(1.0 + C.y * uTn4.y + C.x * uTn4.x * (1.0 - sat), 0.0);
-  return lm + (p - lm) * k;
+  vec3 lp = dec(clamp(p, 0.0, 1.0));                  // Lightroom scales colour in linear light, around the luma
+  float ll = luma(lp);
+  return mix(p, enc(max(ll + (lp - ll) * k, 0.0)), uTn4.w);
 }
 
 vec3 grade(vec3 p) {
@@ -858,12 +869,13 @@ export class Renderer {
     });
     gl.uniform3fv(p.u('uGrd'), grd);
     gl.uniform2f(p.u('uGrdBB'), par.grade_blend / 100, par.grade_balance / 100);
-    gl.uniform4f(p.u('uTn'), TUNE.wbT, TUNE.wbN, TUNE.hlK, TUNE.hlLo);
+    gl.uniform4f(p.u('uTn'), 0, 0, TUNE.hlK, TUNE.hlLo);
     gl.uniform1f(p.u('uGrdK'), TUNE.grdK);
     gl.uniform4f(p.u('uGt'), TUNE.gdL, TUNE.gdA, TUNE.gdB, TUNE.gdF);
     gl.uniform2f(p.u('uMk'), TUNE.msK, TUNE.wbL);
-    gl.uniform2f(p.u('uWb'), TUNE.wbB, TUNE.wbC);
-    gl.uniform3f(p.u('uTn4'), TUNE.vbK, TUNE.saK, TUNE.wbS);
+    gl.uniformMatrix3fv(p.u('uWmT'), false, colMajor(TUNE.wbKt)); gl.uniformMatrix3fv(p.u('uWmN'), false, colMajor(TUNE.wbKn));
+    gl.uniform2f(p.u('uWf'), TUNE.wbF, TUNE.wbA);
+    gl.uniform4f(p.u('uTn4'), TUNE.vbK, TUNE.saK, TUNE.wbS, TUNE.satLin);
     gl.uniform4f(p.u('uTn2'), TUNE.exK, TUNE.ctK, TUNE.shK, TUNE.shHi);
     gl.uniform4f(p.u('uTn3'), TUNE.whK, TUNE.blK, TUNE.hlTop, TUNE.shLift);
     gl.uniform1i(p.u('uGrdOn'), grdOn ? 1 : 0);

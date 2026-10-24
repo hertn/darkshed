@@ -25,11 +25,38 @@ export function samplePatch(img, u, v, radius = 3) {
   return n ? [r / n, g / n, b / n] : [0.18, 0.18, 0.18];
 }
 
+/** The white balance matrix the shader builds for temperature / tint sliders in -1..1 (see wbMat in gl.js). */
+export function wbMatrix(temp, tint) {
+  const scaled = (K, t) => {
+    const d = [K[0], K[4], K[8]];
+    return K.map((v, i) => (i % 4 === 0 ? Math.pow(d[i / 4], t) : v * t));
+  };
+  const mul = (A, B) => {
+    const C = new Array(9).fill(0);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) for (let k = 0; k < 3; k++) C[i * 3 + j] += A[i * 3 + k] * B[k * 3 + j];
+    return C;
+  };
+  return mul(scaled(TUNE.wbKt, temp * 4), scaled(TUNE.wbKn, tint * 5));
+}
+
 /** Temp / tint (-100..100) that make a linear RGB value neutral under the shader's white balance model. */
 export function wbFromLinear([r, g, b]) {
   r = Math.max(r, 1e-4); g = Math.max(g, 1e-4); b = Math.max(b, 1e-4);
-  const t = Math.log2(b / r) / (TUNE.wbT + TUNE.wbB);
-  const n = (Math.log2(g / r) + t * (TUNE.wbC - TUNE.wbT)) / TUNE.wbN;
+  const err = (t, n) => {
+    const m = wbMatrix(t, n);
+    const o = [0, 1, 2].map((i) => Math.max(m[i * 3] * r + m[i * 3 + 1] * g + m[i * 3 + 2] * b, 1e-6));
+    return [Math.log(o[0] / o[1]), Math.log(o[2] / o[1])];
+  };
+  let t = 0, n = 0;
+  for (let it = 0; it < 30; it++) {                       // Newton steps with a numerical Jacobian
+    const e = err(t, n), h = 1e-3;
+    const a = err(t + h, n), c = err(t, n + h);
+    const j00 = (a[0] - e[0]) / h, j10 = (a[1] - e[1]) / h, j01 = (c[0] - e[0]) / h, j11 = (c[1] - e[1]) / h;
+    const det = j00 * j11 - j01 * j10;
+    if (Math.abs(det) < 1e-9) break;
+    t = Math.max(-1, Math.min(1, t - (e[0] * j11 - e[1] * j01) / det));
+    n = Math.max(-1, Math.min(1, n - (j00 * e[1] - j10 * e[0]) / det));
+  }
   const clamp = (x) => Math.max(-100, Math.min(100, Math.round(x * 100)));
   return { temp: clamp(t), tint: clamp(n) };
 }
