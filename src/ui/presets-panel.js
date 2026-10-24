@@ -94,7 +94,11 @@ export function createPresetsPanel({ editSync }) {
     const c = document.createElement('canvas'); c.width = 96; c.height = 96;
     const s = document.createElement('span'); s.textContent = name;
     d.append(c, s);
-    d.onclick = () => { if (!curItem()) { toast('Open a photo first'); return; } onClick(); markActive(d); };
+    d.onclick = () => {
+      if (!curItem()) { toast('Open a photo first'); return; }
+      if (d.classList.contains('on')) { removeApplied(); d.classList.remove('on'); return; }       // pressing the applied preset again takes it off
+      onClick(); markActive(d);
+    };
     if (items) {
       const more = document.createElement('button'); more.className = 'more'; more.textContent = '⋯'; more.title = 'Rename, move, update, delete…';
       more.onclick = (e) => { e.stopPropagation(); menu(items(), more); };
@@ -243,6 +247,14 @@ export function createPresetsPanel({ editSync }) {
       if (same(st.base[k], st.target[k])) continue;
       if (st.base[k] === undefined) delete it.params[k]; else it.params[k] = clone(st.base[k]);
     }
+  }
+  /** Takes the applied preset off again: undoes what it changed (a look or LUT shown as applied after a reload has no record, so it is cleared). */
+  function removeApplied() {
+    const it = curItem(); if (!it) return;
+    if (amountState && amountState.id === it.id) revertPrevious(it);
+    else applyLook(it.params, {}, '');
+    amountState = null; showAmount();
+    editSync(); changed({ edit: true }); commit('Remove preset');
   }
   function applyLookPreset(patch, label, profile) {
     const it = curItem(); if (!it) { toast('Open a photo first'); return; }
