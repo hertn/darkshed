@@ -185,10 +185,11 @@ export async function loadFull(file, { quality = 1, maxDim = 16384, outputColor 
       try {
         onStatus(half ? 'Decoding RAW (reduced size)…' : 'Decoding RAW at full resolution…');
         await raw.open(bytes.slice(), { halfSize: half, useCameraWb: true, outputBps: 16, outputColor, noAutoBright: true, gamm: [1, 1], userQual: quality, highlight: 0 });
-        let exifSeg = null;
+        let exifSeg = null, camera = '';
+        try { const m = await raw.metadata(true); camera = `${m.camera_make || ''} ${m.camera_model || ''}`.trim(); } catch {}
         try { const t = await raw.thumbnailData(); if (t && t.format === 'jpeg') exifSeg = extractExif(t.data); } catch {}
         const d = await raw.imageData();
-        return { kind: 'raw', rgb16: d.data, width: d.width, height: d.height, colors: d.colors || 3, exifSeg, reduced: half };
+        return { kind: 'raw', rgb16: d.data, width: d.width, height: d.height, colors: d.colors || 3, exifSeg, camera, reduced: half };
       } finally { raw.dispose(); }
     };
     try {
