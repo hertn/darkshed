@@ -79,8 +79,9 @@ export function createCurveEditor(host, get, onChange, onCommit = () => {}) {
     return best;
   };
 
-  let drag = -1;
+  let drag = -1, down = null, lastTap = null;
   cv.addEventListener('pointerdown', (e) => {
+    down = { x: e.clientX, y: e.clientY, t: performance.now() };
     const [x, y, w] = local(e), pts = get()[ch];
     let i = nearest(pts, x, y, w);
     if (i < 0) {
@@ -102,12 +103,23 @@ export function createCurveEditor(host, get, onChange, onCommit = () => {}) {
     redraw(); onChange();
   });
   const end = () => { const was = drag >= 0; if (was) onCommit(); drag = -1; if (was) redraw(); };
-  cv.addEventListener('pointerup', end);
-  cv.addEventListener('pointercancel', end);
-  cv.addEventListener('dblclick', (e) => {
+  // Double click / double tap on a point: an inner point is removed, an end point goes back to its original corner. Detected here
+  // because iOS sends no dblclick for touches (and the first press may already have added a point).
+  const doubleTap = (e) => {
+    const now = performance.now(), d = down; down = null;
+    if (e.type !== 'pointerup' || !d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 8 || now - d.t > 350) { lastTap = null; return false; }
+    const prev = lastTap; lastTap = { x: e.clientX, y: e.clientY, t: now };
+    if (!prev || now - prev.t > 450 || Math.hypot(e.clientX - prev.x, e.clientY - prev.y) > 24) return false;
+    lastTap = null;
     const [x, y, w] = local(e), pts = get()[ch], i = nearest(pts, x, y, w);
-    if (i > 0 && i < pts.length - 1) { pts.splice(i, 1); redraw(); onChange(); onCommit(); }
-  });
+    if (i < 0) return false;
+    if (i > 0 && i < pts.length - 1) pts.splice(i, 1);
+    else pts[i] = i === 0 ? [0, 0] : [1, 1];
+    return true;
+  };
+  const finish = (e) => { const changed = doubleTap(e); end(); if (changed) { redraw(); onChange(); onCommit(); } };
+  cv.addEventListener('pointerup', finish);
+  cv.addEventListener('pointercancel', finish);
   new ResizeObserver(redraw).observe(cv);
   return { redraw, reset() { Object.assign(get(), identityCurves()); redraw(); onChange(); onCommit(); } };
 }

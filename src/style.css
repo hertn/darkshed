@@ -445,7 +445,7 @@ body.m .btn.m-only { display: inline-flex !important; }
 @media (max-width: 860px) { body.m.grid-on .panel, body.m.grid-on .dock { display: none !important; } }
 
 /* touch screens: no double-tap zoom of the page (the photo has its own zoom) */
-@media (pointer: coarse) { html, body, button, .panel, .dock { touch-action: manipulation; } }
+@media (pointer: coarse) { *, *::before, *::after { touch-action: manipulation; } }      /* no double-tap zoom anywhere (controls that need other gestures set their own touch-action, which wins) */
 
 /* presets: category chips choose one category at a time (all screens); on a phone the category is one horizontal strip */
 .pchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 14px 8px; }

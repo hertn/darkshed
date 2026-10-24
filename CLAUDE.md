@@ -14,7 +14,7 @@ Browser-based RAW + JPEG editor (plain JavaScript, WebGL2, LibRaw via WebAssembl
 ## Decisions to keep
 - Photos never leave the device; the server only stores presets and LUTs.
 - iOS home-screen app: keep `apple-mobile-web-app-status-bar-style` = `black` (with `black-translucent` iOS 26 left a gap under the dock).
-- Page zoom is disabled on touch screens on purpose.
+- Page zoom is disabled on touch screens on purpose, including double-tap zoom: `touch-action: manipulation` on everything (coarse pointers), and the photo's double-click zoom only reacts to a mouse. Curves detect double click / double tap themselves (inner point removed, end point back to its corner).
 - No live demo on GitHub Pages (decided: not worth risking the offline cache).
 
 ## UI patterns worth keeping consistent
