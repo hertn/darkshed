@@ -4,9 +4,9 @@
  *  measured against Lightroom exports for these models, any other camera gets the middle value. */
 export const RAW_CAM_STOPS = [[/fuji/i, 0], [/canon.*5d.*mark ?(iii|3)/i, -0.55], [/nikon.*d750/i, -1.1], [/sony.*(ilca-77|a77)/i, -0.55]];
 export const RAW_CAM_DEFAULT = -0.55;
-/** RAW base profiles: [label, value]. '' is Adobe Color (the fitted base curve); 'camera' fits the JPEG inside the file (camfit.js). */
-export const BASE_PROFILES = [['Adobe Color', ''], ['Camera Matching', 'camera'], ['Adobe Neutral', 'neutral'], ['Adobe Vivid', 'vivid'], ['Adobe Landscape', 'landscape'], ['Adobe Portrait', 'portrait']];
-/** Approximations of Adobe's looks as [contrast, saturation] on top of Adobe Color; not measured against Lightroom. */
+/** RAW base profiles: [label, value]. '' is Standard (the base curve fitted to Lightroom's default look); 'camera' fits the JPEG inside the file (camfit.js). */
+export const BASE_PROFILES = [['Standard', ''], ['Camera Matching', 'camera'], ['Neutral', 'neutral'], ['Vivid', 'vivid'], ['Landscape', 'landscape'], ['Portrait', 'portrait']];
+/** Looks as [contrast, saturation] on top of Standard; chosen by eye, not measured against anything. */
 export const BASE_LOOKS = { neutral: [-0.2, 0.9], vivid: [0.25, 1.3], landscape: [0.18, 1.15], portrait: [-0.1, 0.92] };
 /** Per-camera correction after the base curve (17 knots over 0..1, red / green / blue), fitted on the same exports; cameras not listed get none. */
 export const RAW_CAM_CURVES = [
