@@ -11,25 +11,26 @@ import { slider } from './slider.js';
 import { icon } from './icons.js';
 import { modal, toast, menu } from './overlays.js';
 import { removeLutEverywhere } from '../sync.js';
+import { lsGet, lsSet } from '../store.js';
 
 const download = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 20000); };
 const safeName = (s) => s.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'preset';
 
 export function createPresetsPanel({ editSync }) {
   const el = document.createElement('div'); el.className = 'pane'; el.dataset.pane = 'presets';
-  el.innerHTML = '<div class="pane-title">Presets</div><div class="pane-sub">Click a look to apply it. Lightroom presets (.xmp, .lrtemplate, .zip packs) can be imported and exported.</div>';
+  el.innerHTML = '<div class="pane-title">Presets</div>';
 
-  // ----- actions -----
-  const actions = document.createElement('div'); actions.className = 'btn-row'; actions.style.paddingTop = '0';
-  const mkBtn = (label, ic, fn) => { const b = document.createElement('button'); b.className = 'btn small'; b.innerHTML = icon(ic, 15) + label; b.onclick = (e) => fn(e, b); actions.append(b); return b; };
-  mkBtn('Save', 'plus', saveDialog);
+  // ----- toolbar: search, Save, and one menu for everything else -----
+  const bar = document.createElement('div'); bar.className = 'pbar';
+  const search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Search presets'; search.setAttribute('aria-label', 'Search presets');
+  const saveBtn = document.createElement('button'); saveBtn.className = 'btn small'; saveBtn.innerHTML = icon('plus', 15) + 'Save'; saveBtn.title = 'Save the current look as a preset'; saveBtn.onclick = saveDialog;
+  const moreBtn = document.createElement('button'); moreBtn.className = 'btn small'; moreBtn.textContent = '⋯'; moreBtn.title = 'Import, export'; moreBtn.setAttribute('aria-label', 'More: import and export');
+  bar.append(search, saveBtn, moreBtn);
   const presetInput = document.createElement('input'); presetInput.type = 'file'; presetInput.hidden = true; presetInput.multiple = true;
   // iOS greys out file types it does not know (.xmp, .lrtemplate, .cube), so there it must show every file; the import skips anything it cannot use
   const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (!IOS) presetInput.accept = '.xmp,.lrtemplate,.zip';
   presetInput.onchange = async () => { const files = [...presetInput.files]; presetInput.value = ''; if (files.length) await doImport(files); };
-  mkBtn('Import…', 'import', () => presetInput.click());
-  mkBtn('Export…', 'export', (e, b) => exportMenu(b));
   const lutInput = document.createElement('input'); lutInput.type = 'file'; if (!IOS) lutInput.accept = '.cube'; lutInput.hidden = true; lutInput.multiple = true;
   lutInput.onchange = async () => {
     for (const f of lutInput.files) {
@@ -38,8 +39,14 @@ export function createPresetsPanel({ editSync }) {
     }
     lutInput.value = '';
   };
-  mkBtn('LUT…', 'image', () => lutInput.click());
-  el.append(actions, presetInput, lutInput);
+  moreBtn.onclick = () => menu([
+    { label: 'Import presets (.xmp, .lrtemplate, .zip)…', onClick: () => presetInput.click() },
+    { label: 'Import LUT (.cube)…', onClick: () => lutInput.click() },
+    'sep',
+    { label: 'Export current settings as Lightroom preset…', onClick: exportCurrent },
+    { label: 'Export all my presets as ZIP', onClick: exportAll },
+  ], moreBtn);
+  el.append(bar, presetInput, lutInput);
 
   // ----- amount -----
   let amountState = null;      // { id, base, target, name }
@@ -54,6 +61,7 @@ export function createPresetsPanel({ editSync }) {
   const showAmount = () => { const it = curItem(); amountBox.style.display = amountState && it && amountState.id === it.id ? '' : 'none'; };
 
   const body = document.createElement('div'); el.append(body);
+  const noMatch = document.createElement('p'); noMatch.className = 'hint'; noMatch.style.margin = '8px 16px'; noMatch.hidden = true; noMatch.textContent = 'No presets match.'; el.append(noMatch);
   let thumbsFor = null, building = 0;
   const tiles = [];
 
@@ -62,6 +70,8 @@ export function createPresetsPanel({ editSync }) {
   function section(title, mine = false) {
     const wrap = document.createElement('div'); wrap.className = 'pgroup'; body.append(wrap); curWrap = wrap; groupList.push({ title, wrap, mine });
     const t = document.createElement('div'); t.className = 'group-title'; t.textContent = title; wrap.append(t);
+    if (lsGet('pcol:' + title, '0') === '1') wrap.classList.add('collapsed');
+    t.addEventListener('click', () => { if (document.body.classList.contains('m')) return; lsSet('pcol:' + title, wrap.classList.toggle('collapsed') ? '1' : '0'); });
     if (mine) holdMenu(t, (a) => openCategoryMenu(title, a), t);
     const g = document.createElement('div'); g.className = 'preset-grid'; wrap.append(g); return g;
   }
@@ -92,7 +102,7 @@ export function createPresetsPanel({ editSync }) {
       holdMenu(d, (anchor) => menu(items(), anchor), more);
     }
     grid.append(d);
-    tiles.push({ canvas: c, state });
+    tiles.push({ canvas: c, state, el: d, name, wrap: curWrap });
     return d;
   }
 
@@ -109,31 +119,11 @@ export function createPresetsPanel({ editSync }) {
     const base = it ? clone(it.params) : defaults();      // with no photo open the looks are listed without previews
     const lookState = (patch, profile) => { const p = clone(base); applyLook(p, patch, profile); return { p }; };
 
-    const g1 = section('Fujifilm-inspired looks');
-    tile(g1, 'None', lookState({}, ''), () => applyLookPreset({}, 'None', ''));
-    for (const l of BUILTIN) tile(g1, l.name, lookState(l.patch, 'b:' + l.name), () => applyLookPreset(l.patch, l.name, 'b:' + l.name), { active: base.profile === 'b:' + l.name });
-    hint('Approximations built from the sliders. They are not Fujifilm\'s own film simulations.');
-
-    if (luts.length) {
-      const g2 = section('LUTs');
-      luts.forEach((l, k) => {
-        const p = clone(base); applyLook(p, {}, 'l:' + l.id); p.lut = l.id; p.lutAmount = 100;
-        tile(g2, l.name, { p, lut: lutFull[k] }, () => applyLut(l.id, l.name), {
-          active: base.lut === l.id, applyName: `LUT ${l.name}`,
-          items: () => [
-            { label: 'Apply', onClick: () => applyLut(l.id, l.name) },
-            'sep',
-            { label: 'Delete…', onClick: () => confirmDialog(`Delete LUT "${l.name}"?`, 'It is removed from this device and from your other devices if you sync. This cannot be undone.', 'Delete', async () => { await removeLutEverywhere(l.id); rebuild(); }) },
-          ],
-        });
-      });
-    } else hint('Import .cube files to use them as looks.');
-
     const mine = userPresets();
     const names = Object.keys(mine).filter((n) => n !== '__deleted' && validPreset(mine[n]));
     const groups = new Map();
     for (const n of names) { const g = mine[n].group || 'My presets'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(n); }
-    if (!groups.size) { section('My presets', false); hint('Use "Save" to keep the current look, or "Import…" for Lightroom presets.'); }
+    if (!groups.size) { section('My presets', false); hint('Use "Save" to keep the current look, or import Lightroom presets from the ⋯ menu.'); }
     for (const [g, list] of [...groups].sort((a, b) => (a[0] === 'My presets' ? -1 : b[0] === 'My presets' ? 1 : a[0].localeCompare(b[0])))) {
       const grid = section(g, true);
       for (const n of list.sort((a, b) => a.localeCompare(b))) {
@@ -151,10 +141,46 @@ export function createPresetsPanel({ editSync }) {
         });
       }
     }
+    const g1 = section('Premade');
+    tile(g1, 'None', lookState({}, ''), () => applyLookPreset({}, 'None', ''));
+    for (const l of BUILTIN) tile(g1, l.name, lookState(l.patch, 'b:' + l.name), () => applyLookPreset(l.patch, l.name, 'b:' + l.name), { active: base.profile === 'b:' + l.name });
+    hint('Approximations built from the sliders. They are not Fujifilm\'s own film simulations.');
+
+    if (luts.length) {
+      const g2 = section('LUTs');
+      luts.forEach((l, k) => {
+        const p = clone(base); applyLook(p, {}, 'l:' + l.id); p.lut = l.id; p.lutAmount = 100;
+        tile(g2, l.name, { p, lut: lutFull[k] }, () => applyLut(l.id, l.name), {
+          active: base.lut === l.id, applyName: `LUT ${l.name}`,
+          items: () => [
+            { label: 'Apply', onClick: () => applyLut(l.id, l.name) },
+            'sep',
+            { label: 'Delete…', onClick: () => confirmDialog(`Delete LUT "${l.name}"?`, 'It is removed from this device and from your other devices if you sync. This cannot be undone.', 'Delete', async () => { await removeLutEverywhere(l.id); rebuild(); }) },
+          ],
+        });
+      });
+    } else hint('Import .cube files from the ⋯ menu to use them as looks.');
+
     if (!it) { const h = document.createElement('p'); h.className = 'hint'; h.style.margin = '8px 16px'; h.textContent = 'Open a photo to preview these looks on it and apply them.'; body.prepend(h); }
     buildChips();
+    groupList.find((g) => g.wrap.querySelector('.preset.on'))?.wrap.classList.remove('collapsed');      // never hide the look that is applied
+    applyFilter();
     renderThumbs();
   }
+
+  function applyFilter() {
+    const q = search.value.trim().toLowerCase();
+    el.classList.toggle('searching', !!q);
+    let any = false;
+    for (const g of groupList) {
+      let n = 0;
+      for (const t of tiles) if (t.wrap === g.wrap) { const ok = !q || t.name.toLowerCase().includes(q); t.el.hidden = !ok; if (ok) n++; }
+      g.wrap.hidden = !!q && n === 0;
+      if (n) any = true;
+    }
+    noMatch.hidden = !q || any;
+  }
+  search.oninput = applyFilter;
 
   // phone: a row of category chips; only the chosen category is shown, as one horizontal strip
   let activeGroup = '';
@@ -274,13 +300,6 @@ export function createPresetsPanel({ editSync }) {
     nameDialog('Export current settings', it.name, (n) => download(new Blob([toXmp(n, it.params)], { type: 'application/rdf+xml' }), safeName(n) + '.xmp'),
       'Writes a Lightroom preset (.xmp) with this photo\'s tone, color, effects and detail settings. Import it in Lightroom via Presets → Import.');
   }
-  function exportMenu(anchor) {
-    menu([
-      { label: 'Current settings as Lightroom preset (.xmp)…', onClick: exportCurrent },
-      { label: 'All my presets as ZIP of .xmp', onClick: exportAll },
-    ], anchor);
-  }
-
   function nameDialog(title, initial, onOk, note) {
     let input;
     modal(title, (b) => {

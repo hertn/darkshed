@@ -20,7 +20,7 @@ Browser-based RAW + JPEG editor (plain JavaScript, WebGL2, LibRaw via WebAssembl
 ## UI patterns worth keeping consistent
 - Item menus (presets, grid thumbnails, filmstrip, category chips): a small "⋯" button (hover on desktop, always visible on touch), press and hold (550 ms) on touch, and right-click on desktop. Destructive actions (delete preset or LUT, remove photo) always ask first.
 - Presets replace each other: `revertPrevious()` in `src/ui/presets-panel.js` undoes what the last preset changed before the next one applies, so a color preset never inherits B&W leftovers.
-- The presets panel shows category chips on every screen, one category at a time (a horizontal strip on phones). It lists the looks and synced presets even with no photo open (previews need a photo), and opens on the user's own presets first.
+- The presets panel is one list: search, Save and a "⋯" menu (imports, exports) on top, then collapsible categories on desktop (your own presets first, then Premade, then LUTs); on phones the categories are chips with one horizontal strip at a time. It lists the looks and synced presets even with no photo open (previews need a photo). Profiles (Standard, Camera Matching, ...) are a separate "Profile" picker in the Edit panel, RAW files only; looks and LUTs live only in the presets panel.
 - On iOS the file pickers for presets and LUTs must not set `accept` (iOS greys out .xmp, .lrtemplate, .cube).
 - The floating histogram belongs to the edit screen only (hidden over the grid and with no photo open).
 
