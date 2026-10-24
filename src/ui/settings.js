@@ -43,11 +43,10 @@ bus.on('open-settings', () => {
     row('Keep copies', keepSel); row('Delete', daysSel); row('Size limit', capSel);
     const stMsg = document.createElement('div'); stMsg.className = 'm-msg'; stMsg.textContent = 'Checking…'; stMsg.style.lineHeight = '1.5';
     const stRow = document.createElement('div'); stRow.className = 'btn-row';
-    const clean = document.createElement('button'); clean.className = 'btn small'; clean.textContent = 'Clean up now';
     const clr = document.createElement('button'); clr.className = 'btn small danger ghost'; clr.textContent = 'Delete all stored copies';
-    stRow.append(clean, clr);
+    stRow.append(clr);
     const stHint = document.createElement('p'); stHint.className = 'hint'; stHint.style.margin = '2px 20px 6px';
-    stHint.textContent = 'Clean up now removes stored copies that are older than the "Delete" setting or over the size limit (it also happens by itself). Delete all stored copies removes everything and empties the library.';
+    stHint.textContent = 'Old copies and anything over the size limit are removed automatically, and right away when you change these settings.';
     body.append(stMsg, stRow, stHint);
     const mb = (n) => (n > 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n < 1048576 ? Math.round(n / 1024) + ' KB' : Math.round(n / 1048576) + ' MB');
     async function refreshStorage() {
@@ -64,7 +63,6 @@ bus.on('open-settings', () => {
       if (!keepPrefs.keep && confirm('Also delete the copies that are already stored? (Photos you have open stay open until the app reloads.)')) { await clearStored(); toast('Stored copies deleted'); }
       refreshStorage();
     };
-    clean.onclick = async () => { const n = await applyLimitsNow(); toast(n ? `${n} stored photo${n === 1 ? '' : 's'} removed to match your settings` : 'Nothing to clean up: every stored copy is within your limits'); refreshStorage(); };
     clr.onclick = async () => { if (!confirm('Delete every stored copy from this device? The photos open in DarkShed are removed too. Your original files are not touched.')) return; await clearStored(); removeAll(); toast('Stored copies deleted'); refreshStorage(); };
     refreshStorage();
     const tips = document.createElement('p'); tips.className = 'hint'; tips.style.margin = '10px 20px 6px';
