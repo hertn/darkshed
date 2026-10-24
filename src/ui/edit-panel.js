@@ -10,7 +10,6 @@ import { icon } from './icons.js';
 import { autoTone, autoWb } from '../analyze.js';
 import { WB_PRESETS, presetValues, asShotKelvin } from '../wb.js';
 import { lsGet, lsSet } from '../store.js';
-import { BUILTIN, applyProfile, listLuts } from '../looks.js';
 import { isEdited } from '../library.js';
 import { defaults as paramDefaults, defaultCrop } from '../params.js';
 import { toast } from './overlays.js';
@@ -26,7 +25,7 @@ let soloOn = lsGet('solo', '0') === '1';
 let curveEditor = null, histogram = null, bwBtn = null;
 let colorMixSel = lsGet('mixSel', 'red');
 const mixSliders = {}, checks = {};
-let baseRow = null, baseSelect = null, wbSelect = null, profSelect = null, resetBtn = null, bwMobile = null;
+let profRow = null, profSelect = null, wbSelect = null, resetBtn = null, bwMobile = null;
 let grading = null, mixSwatches = {};
 
 const P = () => curItem()?.params;
@@ -134,28 +133,12 @@ export function refresh() {
 }
 
 // ---------- profile dropdown ----------
-async function buildProfileOptions() {
-  if (!profSelect) return;
-  const luts = await listLuts();
-  profSelect.textContent = '';
-  const add = (parent, v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; parent.append(o); };
-  add(profSelect, '', 'Default');
-  const g1 = document.createElement('optgroup'); g1.label = 'Fujifilm-inspired';
-  for (const l of BUILTIN) add(g1, 'b:' + l.name, l.name);
-  profSelect.append(g1);
-  if (luts.length) { const g2 = document.createElement('optgroup'); g2.label = 'LUTs'; for (const l of luts) add(g2, 'l:' + l.id, l.name); profSelect.append(g2); }
-  profSelect.value = P()?.profile || '';
-}
 function syncProfile() {
   if (!profSelect) return;
   const cur = curItem();
-  if (baseRow) {
-    baseRow.hidden = !(cur && isRaw(cur.file));
-    baseSelect.value = P()?.baseProfile || '';
-    if (cur && P()?.baseProfile === 'camera' && cur.camFit === undefined) ensureCamFit(cur).then(() => changed({ edit: true }));
-  }
-  const v = P()?.profile || '';
-  profSelect.value = [...profSelect.options].some((o) => o.value === v) ? v : '';
+  profRow.hidden = !(cur && isRaw(cur.file));       // profiles are a RAW thing: a JPEG already has its look baked in
+  profSelect.value = P()?.baseProfile || '';
+  if (cur && P()?.baseProfile === 'camera' && cur.camFit === undefined) ensureCamFit(cur).then(() => changed({ edit: true }));
   const it = curItem();
   if (resetBtn) resetBtn.disabled = !it || !isEdited(it);
 }
@@ -242,34 +225,21 @@ export function createEditPanel() {
   hw.append(hh, hc);
   head.append(hw);
   histogram = createHistogram(hc);
-  // Profile (looks) dropdown
-  const profRow = document.createElement('div'); profRow.className = 'field-row'; profRow.style.padding = '0 16px 8px';
+  // Profile dropdown (RAW only): how the camera's raw data is rendered before your edits
+  profRow = document.createElement('div'); profRow.className = 'field-row'; profRow.style.padding = '0 16px 8px'; profRow.hidden = true;
   const profLab = document.createElement('label'); profLab.textContent = 'Profile';
   profSelect = document.createElement('select');
+  for (const [t, v] of BASE_PROFILES) { const o = document.createElement('option'); o.value = v; o.textContent = t; profSelect.append(o); }
   profRow.append(profLab, profSelect);
   head.append(profRow);
-  // RAW base profile (Adobe Color, Camera Matching, ...): only shown for RAW photos
-  baseRow = document.createElement('div'); baseRow.className = 'field-row'; baseRow.style.padding = '0 16px 8px'; baseRow.hidden = true;
-  const baseLab = document.createElement('label'); baseLab.textContent = 'Camera profile';
-  baseSelect = document.createElement('select');
-  for (const [t, v] of BASE_PROFILES) { const o = document.createElement('option'); o.value = v; o.textContent = t; baseSelect.append(o); }
-  baseRow.append(baseLab, baseSelect);
-  head.append(baseRow);
-  baseSelect.onchange = async () => {
+  profSelect.onchange = async () => {
     const it = curItem(); if (!it) return;
-    it.params.baseProfile = baseSelect.value;
-    const label = baseSelect.options[baseSelect.selectedIndex].textContent;
-    if (baseSelect.value === 'camera' && it.camFit === undefined) toast("Matching the camera's own look…");
-    if (baseSelect.value === 'camera' && !(await ensureCamFit(it))) toast('This file has no usable camera preview, so Camera Matching has no effect.', 4000);
-    changed({ edit: true }); commit(`Camera profile: ${label}`);
+    it.params.baseProfile = profSelect.value;
+    const label = profSelect.options[profSelect.selectedIndex].textContent;
+    if (profSelect.value === 'camera' && it.camFit === undefined) toast("Matching the camera's own look…");
+    if (profSelect.value === 'camera' && !(await ensureCamFit(it))) toast('This file has no usable camera preview, so Camera Matching has no effect.', 4000);
+    changed({ edit: true }); commit(`Profile: ${label}`);
   };
-  profSelect.onchange = () => {
-    const it = curItem(); if (!it) return;
-    applyProfile(it.params, profSelect.value);
-    sync(); changed({ edit: true }); commit(`Profile: ${profSelect.options[profSelect.selectedIndex].textContent}`);
-  };
-  buildProfileOptions();
-  bus.on('luts', buildProfileOptions);
 
   const row = document.createElement('div'); row.className = 'ph-row'; row.style.padding = '2px 12px 10px'; row.style.alignItems = 'center';
   const autoBtn = document.createElement('button'); autoBtn.className = 'btn small'; autoBtn.innerHTML = icon('auto', 15) + 'Auto';
