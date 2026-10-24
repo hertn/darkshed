@@ -125,6 +125,9 @@ uniform float uGrdK;
 uniform vec4 uGt;           // grading: luminance strength, zone falloff at blending 0 and 100
 uniform vec2 uMk;           // shadow/highlight mask: share of the brightest channel (vs luma); white balance: share of luminance kept constant
 uniform mat3 uWmT, uWmN;    // white balance matrices at temperature +25 and tint +20
+uniform float uPPe;         // 1 = exposure stage in ProPhoto
+uniform float uCtP;         // contrast pivot warp (1 = pivot at mid-grey)
+uniform float uKnee;        // exposure highlight roll-off starts here (linear)
 uniform vec2 uWf;           // white balance fade towards the highlights: amount, start brightness
 uniform vec4 uTn4;          // vibrance, saturation strength
 uniform vec4 uTn2;          // exposure, contrast, shadows, shadows range
@@ -174,20 +177,24 @@ mat3 wbMat(mat3 K, float t) {
   vec3 d = vec3(K[0][0], K[1][1], K[2][2]);
   return mat3(pow(d.x, t), 0.0, 0.0, 0.0, pow(d.y, t), 0.0, 0.0, 0.0, pow(d.z, t)) + (K - mat3(d.x, 0.0, 0.0, 0.0, d.y, 0.0, 0.0, 0.0, d.z)) * t;
 }
+const mat3 TOPP = mat3(0.529346, 0.098374, 0.016883, 0.330073, 0.873461, 0.117672, 0.140581, 0.028165, 0.865444);
+const mat3 FROMPP = mat3(2.034076, -0.228813, -0.008570, -0.727334, 1.231730, -0.153287, -0.306742, -0.002917, 1.161856);
 // linear-light part of an adjustment set: white balance, exposure (+ highlight shoulder), shadows / highlights
 vec3 toneLin(vec3 c, vec4 A, vec4 B) {
   float wf = 1.0 - uWf.x * smoothstep(uWf.y, 1.0, luma(enc(c)));
   mat3 wm = wbMat(uWmT, B.z * 4.0 * wf) * wbMat(uWmN, B.w * 5.0 * wf);
   wm /= mix(1.0, luma(wm * vec3(1.0)), uMk.y);
   c = wm * c;
+  if (uPPe > 0.5) c = TOPP * c;                        // exposure and its highlight roll-off work in ProPhoto, as in Lightroom
   float ex = A.x * uTn2.x;
   float W = exp2(max(ex, 0.0)) * mix(1.0, max(1.0, max(wm[0][0] + wm[1][0] + wm[2][0], max(wm[0][1] + wm[1][1] + wm[2][1], wm[0][2] + wm[1][2] + wm[2][2]))), uTn4.z);
   c *= exp2(ex);
-  const float KNEE = 0.5;
+  float KNEE = uKnee;
   float a = (W - 1.0) / (1.0 - KNEE);
   vec3 t = clamp((c - KNEE) / max(W - KNEE, 1e-4), 0.0, 1.0);
   vec3 sh = KNEE + (1.0 - KNEE) * t * (1.0 + a) / (1.0 + a * t);
   c = mix(c, sh, step(KNEE, c));
+  if (uPPe > 0.5) c = max(FROMPP * c, 0.0);
   vec3 ec = enc(c);
   float le = mix(luma(ec), max(ec.r, max(ec.g, ec.b)), uMk.x);
   float ms = 1.0 - smoothstep(0.0, uTn2.w, le);
@@ -203,7 +210,8 @@ vec3 toneEnc(vec3 p, vec4 A, vec4 B) {
   float wp = 1.0 - B.x * uTn3.x;
   p = (p - bp) / max(wp - bp, 0.05);
   vec3 q = clamp(p, 0.0, 1.0);
-  vec3 sc = q * q * (3.0 - 2.0 * q);
+  vec3 qw = pow(q, vec3(uCtP));                       // pivot of the contrast curve: below 1 moves it under mid-grey
+  vec3 sc = pow(qw * qw * (3.0 - 2.0 * qw), vec3(1.0 / uCtP));
   float ct = A.y * uTn2.y;
   return ct >= 0.0 ? mix(p, sc, ct) : mix(p, vec3(0.5), -ct * 0.5);
 }
@@ -874,6 +882,9 @@ export class Renderer {
     gl.uniform4f(p.u('uGt'), TUNE.gdL, TUNE.gdA, TUNE.gdB, TUNE.gdF);
     gl.uniform2f(p.u('uMk'), TUNE.msK, TUNE.wbL);
     gl.uniformMatrix3fv(p.u('uWmT'), false, colMajor(TUNE.wbKt)); gl.uniformMatrix3fv(p.u('uWmN'), false, colMajor(TUNE.wbKn));
+    gl.uniform1f(p.u('uKnee'), TUNE.knee);
+    gl.uniform1f(p.u('uCtP'), TUNE.ctP);
+    gl.uniform1f(p.u('uPPe'), TUNE.ppExp);
     gl.uniform2f(p.u('uWf'), TUNE.wbF, TUNE.wbA);
     gl.uniform4f(p.u('uTn4'), TUNE.vbK, TUNE.saK, TUNE.wbS, TUNE.satLin);
     gl.uniform4f(p.u('uTn2'), TUNE.exK, TUNE.ctK, TUNE.shK, TUNE.shHi);
