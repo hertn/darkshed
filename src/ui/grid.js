@@ -21,7 +21,7 @@ export function createGrid(host) {
     <div class="grid-body"><div class="cells"></div></div>`;
   host.append(root);
   const cells = root.querySelector('.cells'), count = root.querySelector('.gcount'), size = root.querySelector('.gsize');
-  let down = null, lastTap = { id: null, t: 0 };      // touch double-tap detection (the cells are rebuilt on every tap, so this lives here)
+  let down = null, lastTap = { id: null, t: 0 }, lastTouchEnd = 0;      // touch double-tap detection (the cells are rebuilt on every tap, so this lives here)
   let cursor = null;       // item id the keyboard cursor sits on
   let anchor = null;
 
@@ -58,22 +58,25 @@ export function createGrid(host) {
       c.classList.toggle('cur', it.id === cursor);
       c.classList.toggle('rejected', it.flag < 0);
       c.onpointerdown = (e) => onDown(e, it);
-      c.ondblclick = () => open(it);
       c.oncontextmenu = (e) => { e.preventDefault(); tileMenu(it, { x: e.clientX, y: e.clientY }); };
       // phone: press and hold opens the same menu
       c.addEventListener('pointerdown', (e) => {
+        if (e.button === 2) return;
+        down = { x: e.clientX, y: e.clientY, t: performance.now() };
         if (e.pointerType !== 'touch') return;
-        const sx = e.clientX, sy = e.clientY; clearTimeout(held); down = { x: sx, y: sy, t: performance.now() };
+        const sx = e.clientX, sy = e.clientY; clearTimeout(held);
         held = setTimeout(() => { held = 0; tileMenu(it, { x: sx, y: sy }); }, 550);
       });
       c.addEventListener('pointermove', (e) => { if (held && Math.hypot(e.clientX - lastX(e), e.clientY - lastY(e)) > 8) { clearTimeout(held); held = 0; } });
       for (const t of ['pointerup', 'pointercancel']) c.addEventListener(t, () => { clearTimeout(held); held = 0; });
-      // iOS sends no dblclick for touches: a quick second tap on the same photo opens it
+      // Double click / double tap, detected here: the cells are rebuilt on the first press (selecting), so the browser never sees two clicks
+      // on the same element and sends no dblclick (and iOS sends none for touches at all).
       c.addEventListener('pointerup', (e) => {
-        if (e.pointerType === 'mouse' || !down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10 || performance.now() - down.t > 350) { down = null; return; }
+        if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10 || performance.now() - down.t > 350) { down = null; return; }
         const now = performance.now(); down = null;
-        if (lastTap.id === it.id && now - lastTap.t < 450) { lastTap = { id: null, t: 0 }; open(it); } else lastTap = { id: it.id, t: now };
+        if (lastTap.id === it.id && now - lastTap.t < 500) { lastTap = { id: null, t: 0 }; open(it); } else lastTap = { id: it.id, t: now };
       });
+      c.addEventListener('touchend', (e) => { const n = performance.now(); if (n - lastTouchEnd < 400) e.preventDefault(); lastTouchEnd = n; }, { passive: false });      // belt and braces against iOS double-tap zoom
       const more = document.createElement('button'); more.className = 'more'; more.textContent = '⋯'; more.title = 'More…';
       more.onpointerdown = (e) => e.stopPropagation();           // do not select / long-press through the button
       more.onclick = (e) => { e.stopPropagation(); const r = more.getBoundingClientRect(); tileMenu(it, { x: r.left, y: r.bottom }); };

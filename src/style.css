@@ -495,3 +495,6 @@ body.m .pane.searching .pgroup .group-title { display: block; }
 .sc-keys { display: flex; align-items: center; gap: 4px; flex: none; }
 .sc-keys i { font-style: normal; font-size: 11px; color: var(--mut); padding: 0 2px; }
 kbd { display: inline-block; min-width: 22px; padding: 2px 6px; text-align: center; font: 600 11.5px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg); background: var(--well); border: 1px solid var(--line2); border-bottom-width: 2px; border-radius: 5px; }
+
+/* grid: vertical scrolling only, so a double tap opens the photo instead of zooming the page */
+.grid-view, .grid-body, .cells, .cell { touch-action: pan-y; }
