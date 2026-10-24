@@ -96,6 +96,12 @@ svg { display: block; }
 .tile.add { display: flex; align-items: center; justify-content: center; color: var(--mut); border: 2px dashed var(--line2); background: transparent; }
 .tile .spin { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--mut); }
 
+/* desktop: the panel can fold away to the side (press the open tool again) */
+@media (min-width: 861px) {
+  body.panel-closed .panel { display: none; }
+  body.panel-closed .workspace { grid-template-columns: minmax(0, 1fr) var(--rail); }
+}
+
 /* ---------- panel ---------- */
 .panel { background: var(--panel); overflow-y: auto; overflow-x: hidden; border-left: 1px solid #000; scrollbar-width: thin; }
 .rail { background: var(--bg); border-left: 1px solid #000; display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; }
