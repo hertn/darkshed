@@ -220,6 +220,7 @@ export async function select(i) {
   cacheSet(it.id, img);
   app.cur = i;
   app.sel = app.sel.has(it.id) && app.sel.size > 1 ? app.sel : new Set([it.id]);
+  it.camera = img.info?.camera || it.camera;
   app.loaded = { info: img.info, width: img.width, height: img.height, fullW: img.fullW, fullH: img.fullH, img, spotSig: '[]' };
   if (!it.hist) initHistory(it);
   setImage(img);

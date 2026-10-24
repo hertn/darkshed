@@ -5,7 +5,7 @@
 // Pass 1 can render any horizontal region of the image, which is how full-resolution export works in strips.
 
 import { HSL_BANDS, GRADE_ZONES, MAX_MASKS, MAX_BRUSH_MASKS, MAX_COMPS, identityCurves } from './params.js';
-import { TUNE } from './tuning.js';
+import { TUNE, rawCamStops, rawCamCurve } from './tuning.js';
 const colMajor = (k) => [k[0], k[3], k[6], k[1], k[4], k[7], k[2], k[5], k[8]];   // rows -> GL's column order
 import { evalCurve, curvesActive, curveIsIdentity } from './curves-math.js';
 
@@ -166,6 +166,17 @@ vec3 dec(vec3 p) {
   return mix(p / 12.92, pow((p + 0.055) / 1.055, vec3(2.4)), step(0.04045, p));
 }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+uniform bool uRawCc;
+uniform vec3 uRawCcK[17];   // per-camera correction after the base curve
+vec3 camCurve(vec3 p) {
+  vec3 x = clamp(p, 0.0, 1.0) * 16.0, r;
+  for (int k = 0; k < 3; k++) {
+    int i = min(int(x[k]), 15); float f = x[k] - float(i);
+    r[k] = mix(uRawCcK[i][k], uRawCcK[i + 1][k], f);
+  }
+  return r + (p - clamp(p, 0.0, 1.0));
+}
+uniform float uRawOff;       // RAW: camera brightness offset in stops
 uniform vec2 uRawHl;        // RAW highlights: stops at +100 / -100 (tuning.js)
 const float HLX[9] = float[9](0.0, 0.04, 0.10, 0.15, 0.20, 0.27, 0.35, 0.44, 1.0);
 const float HLY[9] = float[9](0.0, 0.0, 0.10, 0.28, 0.39, 0.49, 0.63, 1.0, 1.1);
@@ -285,8 +296,9 @@ void main() {
     float sh = 1.0 - smoothstep(0.0, 0.18, luma(c));
     c.g *= exp2(-uCalTint * 0.6 * sh);
   }
+  if (uRawOn) c *= exp2(uRawOff);
   c = toneLin(c, uGA, uGB);
-  vec3 p = uRawOn ? hlRaw(baseEnc(c), uGA.z) : enc(c);
+  vec3 p = uRawOn ? hlRaw(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uGA.z) : enc(c);
   p = toneEnc(p, uGA, uGB);
 
   // local adjustments
@@ -918,6 +930,8 @@ export class Renderer {
     gl.uniform1f(p.u('uCtP'), TUNE.ctP);
     gl.uniform1f(p.u('uPPe'), TUNE.ppExp);
     gl.uniform1i(p.u('uRawOn'), state.raw ? 1 : 0);
+    gl.uniform1f(p.u('uRawOff'), rawCamStops(state.camera));
+    { const cc = state.raw ? rawCamCurve(state.camera) : null; gl.uniform1i(p.u('uRawCc'), cc ? 1 : 0); if (cc) gl.uniform3fv(p.u('uRawCcK'), cc); else gl.uniform3fv(p.u('uRawCcK'), new Float32Array(51)); }
     gl.uniform2f(p.u('uRawHl'), TUNE.rawHlPos, TUNE.rawHlNeg);
     gl.uniform3fv(p.u('uRB'), TUNE.rawBase);
     gl.uniform2f(p.u('uRBx'), TUNE.rawX0, TUNE.rawDx);

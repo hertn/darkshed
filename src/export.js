@@ -44,6 +44,7 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
     const p3 = wantP3 && full.kind === 'raw';
     const FW = full.width, FH = full.height, A = FW / FH;
     const st = renderState(item);
+    if (full.camera) st.camera = full.camera;
     const geo = makeGeo(item.crop, A, false);
     er.setGeometry(geo);
 
