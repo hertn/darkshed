@@ -166,6 +166,15 @@ vec3 dec(vec3 p) {
   return mix(p / 12.92, pow((p + 0.055) / 1.055, vec3(2.4)), step(0.04045, p));
 }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+uniform vec2 uRawHl;        // RAW highlights: stops at +100 / -100 (tuning.js)
+const float HLX[9] = float[9](0.0, 0.04, 0.10, 0.15, 0.20, 0.27, 0.35, 0.44, 1.0);
+const float HLY[9] = float[9](0.0, 0.0, 0.10, 0.28, 0.39, 0.49, 0.63, 1.0, 1.1);
+// RAW highlights work on the picture after the base curve: a smooth lift that grows with brightness (measured on Lightroom exports)
+vec3 hlRaw(vec3 pe, float v) {
+  float l = clamp(luma(pe), 0.0, 1.0), m = 0.0;
+  for (int i = 0; i < 8; i++) if (l >= HLX[i]) m = mix(HLY[i], HLY[i + 1], clamp((l - HLX[i]) / (HLX[i + 1] - HLX[i]), 0.0, 1.0));
+  return enc(max(dec(max(pe, 0.0)) * exp2(v * m * (v > 0.0 ? uRawHl.x : uRawHl.y)), 0.0));
+}
 
 vec3 rgb2hsv(vec3 c) {
   vec4 k = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -215,7 +224,7 @@ vec3 toneLin(vec3 c, vec4 A, vec4 B) {
   float mh = smoothstep(uTn.w, 1.0, le) * (1.0 - smoothstep(uTn3.z, 1.0, le));
   c *= exp2(A.w * uTn2.z * ms);
   c += max(A.w, 0.0) * uTn3.w * ms * smoothstep(0.0, 0.003, le);
-  c *= exp2(A.z * uTn.z * mh);
+  if (!uRawOn) c *= exp2(A.z * uTn.z * mh);
   return c;
 }
 // display-referred part: blacks / whites, contrast
@@ -277,7 +286,8 @@ void main() {
     c.g *= exp2(-uCalTint * 0.6 * sh);
   }
   c = toneLin(c, uGA, uGB);
-  vec3 p = toneEnc(uRawOn ? baseEnc(c) : enc(c), uGA, uGB);
+  vec3 p = uRawOn ? hlRaw(baseEnc(c), uGA.z) : enc(c);
+  p = toneEnc(p, uGA, uGB);
 
   // local adjustments
   for (int i = 0; i < 8; i++) {
@@ -286,6 +296,7 @@ void main() {
     if (w < 0.002) continue;
     vec3 cl = toneLin(dec(p), uMA[i], uMB[i]);
     vec3 pl = colorAdj(toneEnc(enc(cl), uMA[i], uMB[i]), uMC[i]);
+    if (uRawOn) pl = hlRaw(pl, uMA[i].z);
     p = mix(p, pl, w);
   }
 
@@ -907,6 +918,7 @@ export class Renderer {
     gl.uniform1f(p.u('uCtP'), TUNE.ctP);
     gl.uniform1f(p.u('uPPe'), TUNE.ppExp);
     gl.uniform1i(p.u('uRawOn'), state.raw ? 1 : 0);
+    gl.uniform2f(p.u('uRawHl'), TUNE.rawHlPos, TUNE.rawHlNeg);
     gl.uniform3fv(p.u('uRB'), TUNE.rawBase);
     gl.uniform2f(p.u('uRBx'), TUNE.rawX0, TUNE.rawDx);
     gl.uniform1f(p.u('uPPc'), TUNE.ppCurve);
