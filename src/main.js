@@ -71,16 +71,23 @@ const panes = {
   profiles: createProfilesPanel(),
   info: createInfoPanel(),
 };
-const RAIL = [['edit', 'edit', 'Edit (E)'], ['crop', 'crop', 'Crop & rotate (C)'], ['spots', 'heal', 'Healing (Q)'], ['mask', 'mask', 'Masking (M)'], ['presets', 'presets', 'Presets (P)'], ['profiles', 'profile', 'Profiles'], ['info', 'info', 'Info (I)']];
+const RAIL = [['edit', 'edit', 'Edit (E)'], ['crop', 'crop', 'Crop & rotate (C)'], ['spots', 'heal', 'Healing (Q)'], ['mask', 'mask', 'Masking (M)'], ['presets', 'presets', 'Presets (L)'], ['profiles', 'profile', 'Profiles (R)'], ['info', 'info', 'Info (I)']];
 const panel = $('panel'), rail = $('rail');
 for (const [id] of RAIL) panel.append(panes[id].el);
 for (const [id, ic, title] of RAIL) {
   const b = document.createElement('button'); b.className = 'ib'; b.title = title; b.dataset.tool = id; b.innerHTML = icon(ic, 22);
-  b.onclick = () => setToolId(id);
+  b.onclick = () => pickTool(id);
   rail.append(b);
+}
+// Desktop: choosing the tool that is already open folds the panel away to the side, choosing it again (or another tool) brings it back.
+const panelClosed = (on) => { document.body.classList.toggle('panel-closed', on); lsSet('panelClosed', on ? '1' : '0'); dispatchEvent(new Event('resize')); };
+export function pickTool(id) {
+  if (id === app.tool && !document.body.classList.contains('m')) panelClosed(!document.body.classList.contains('panel-closed'));
+  else setToolId(id);
 }
 export function setToolId(id) {
   const prev = app.tool;
+  if (document.body.classList.contains('panel-closed')) panelClosed(false);
   panes[prev]?.onLeave?.();
   app.tool = id;
   for (const [pid, p] of Object.entries(panes)) p.el.classList.toggle('show', pid === id);
@@ -92,6 +99,7 @@ export function setToolId(id) {
   bus.emit('tool', id);
 }
 setToolId('edit');
+if (lsGet('panelClosed', '0') === '1' && !matchMedia('(max-width: 860px)').matches) document.body.classList.add('panel-closed');
 initMobile({ setToolId });
 
 // ---------- top bar ----------
@@ -196,7 +204,7 @@ function shortcutsModal() {
   const rows = [
     ['Undo / redo', 'Ctrl/Cmd + Z / Shift + Z'], ['Before / after', '\\'], ['Next / previous photo', '→ / ←'],
     ['Zoom fit / 100%', 'Z'], ['Zoom in / out', '+ / −'], ['Rating', '0 – 5'], ['Pick / reject / unflag', 'P / X / U'],
-    ['Grid / cull view', 'G'], ['Full screen (browser)', 'F'], ['Edit / crop / spot removal / masking / info', 'E / C / Q / M / I'], ['Mask overlay / spot visibility', 'O / H'], ['Copy / paste settings', 'Ctrl/Cmd + Shift + C / V'],
+    ['Grid / cull view', 'G'], ['Full screen (browser)', 'F'], ['Edit / crop / spot removal / masking / presets / profiles / info (press again to fold the panel away)', 'E / C / Q / M / L / R / I'], ['Mask overlay / spot visibility', 'O / H'], ['Healing: spot or brush', 'B'], ['Crop: swap orientation (instead of reject)', 'X'], ['Copy / paste settings', 'Ctrl/Cmd + Shift + C / V'],
     ['Export', 'Ctrl/Cmd + E'], ['Pan', 'Space + drag'],
   ];
   modal('Keyboard shortcuts', (body) => {
@@ -264,11 +272,13 @@ addEventListener('keydown', (e) => {
   else if (k === 'p' || k === 'P') lib.setFlag(1);
   else if (k === 'x' || k === 'X') lib.setFlag(-1);
   else if (k === 'u' || k === 'U') lib.setFlag(0);
-  else if (k === 'e' || k === 'E') setToolId('edit');
-  else if (k === 'c' || k === 'C') setToolId('crop');
-  else if (k === 'm' || k === 'M') setToolId('mask');
-  else if (k === 'q' || k === 'Q') setToolId('spots');
-  else if (k === 'i' || k === 'I') setToolId('info');
+  else if (k === 'e' || k === 'E') pickTool('edit');
+  else if (k === 'c' || k === 'C') pickTool('crop');
+  else if (k === 'm' || k === 'M') pickTool('mask');
+  else if (k === 'q' || k === 'Q') pickTool('spots');
+  else if (k === 'l' || k === 'L') pickTool('presets');
+  else if (k === 'r' || k === 'R') pickTool('profiles');
+  else if (k === 'i' || k === 'I') pickTool('info');
 });
 
 // ---------- leave safely ----------
