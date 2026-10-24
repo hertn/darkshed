@@ -43,7 +43,7 @@ export function createPresetsPanel({ editSync }) {
     { label: 'Import presets (.xmp, .lrtemplate, .zip)…', onClick: () => presetInput.click() },
     { label: 'Import LUT (.cube)…', onClick: () => lutInput.click() },
     'sep',
-    { label: 'Export current settings as Lightroom preset…', onClick: exportCurrent },
+    { label: 'Export current settings as a preset (.xmp)…', onClick: exportCurrent },
     { label: 'Export all my presets as ZIP', onClick: exportAll },
   ], moreBtn);
   el.append(bar, presetInput, lutInput);
@@ -135,7 +135,7 @@ export function createPresetsPanel({ editSync }) {
     const names = Object.keys(mine).filter((n) => n !== '__deleted' && validPreset(mine[n]));
     const groups = new Map();
     for (const n of names) { const g = mine[n].group || 'My presets'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(n); }
-    if (!groups.size) { section('My presets', false); hint('Use "Save" to keep the current look, or import Lightroom presets from the ⋯ menu.'); }
+    if (!groups.size) { section('My presets', false); hint('Use "Save" to keep the current look, or import presets (.xmp) from the ⋯ menu.'); }
     for (const [g, list] of [...groups].sort((a, b) => (a[0] === 'My presets' ? -1 : b[0] === 'My presets' ? 1 : a[0].localeCompare(b[0])))) {
       const grid = section(g, true);
       for (const n of list.sort((a, b) => a.localeCompare(b))) {
@@ -146,7 +146,7 @@ export function createPresetsPanel({ editSync }) {
             { label: 'Rename…', onClick: () => renameDialog(n) },
             { label: 'Move to category…', onClick: () => moveDialog(n, g) },
             { label: 'Update with current settings…', onClick: () => updateDialog(n) },
-            { label: 'Export as Lightroom preset (.xmp)', onClick: () => exportOne(n, pr) },
+            { label: 'Export as preset (.xmp)', onClick: () => exportOne(n, pr) },
             'sep',
             { label: 'Delete…', onClick: () => confirmDialog(`Delete "${n}"?`, 'This preset is removed from this device and from your other devices if you sync. This cannot be undone.', 'Delete', async () => { await deletePreset(n); rebuild(); }) },
           ],
@@ -319,7 +319,7 @@ export function createPresetsPanel({ editSync }) {
   function exportCurrent() {
     const it = curItem(); if (!it) return;
     nameDialog('Export current settings', it.name, (n) => download(new Blob([toXmp(n, it.params)], { type: 'application/rdf+xml' }), safeName(n) + '.xmp'),
-      'Writes a Lightroom preset (.xmp) with this photo\'s tone, color, effects and detail settings. Import it in Lightroom via Presets → Import.');
+      'Writes a preset file (.xmp) with this photo\'s tone, color, effects and detail settings. Other editors that read .xmp presets can import it.');
   }
   function nameDialog(title, initial, onOk, note) {
     let input;

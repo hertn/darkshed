@@ -7,7 +7,7 @@ import { makeSmall, isRaw } from '../decode.js';
 import { toast } from './overlays.js';
 
 const NOTES = {
-  '': 'Fitted to Lightroom\'s default look.',
+  '': 'The default look.',
   camera: 'Copies the look of the JPEG your camera stored inside the file.',
   neutral: 'Flatter, for more room to edit.',
   vivid: 'More contrast and colour.',

@@ -5,14 +5,14 @@ import { logoSvg } from './logo.js';
 
 export const ABOUT = {
   tagline: 'A darkroom, but in a shed.',
-  intro: 'A free, Lightroom-style RAW and JPEG editor that runs in your browser on Mac, iPad and iPhone. Built because Lightroom costs money and the other "Lightroom killers" were desktop-only.',
+  intro: 'A free RAW and JPEG editor that runs in your browser on Mac, iPad and iPhone. Built because good editors cost money and the free ones were desktop-only.',
   points: [
     ['Private', 'Edits run on your device. Photos are never uploaded.'],
     ['Synced presets', 'Presets and LUTs can sync through your own DarkShed server.'],
-    ['RAW ready', 'Opens Fujifilm RAF and more, and imports Lightroom presets.'],
+    ['RAW ready', 'Opens Fujifilm RAF and more, and imports .xmp and .lrtemplate presets.'],
   ],
   credits: 'Open source (MIT). RAW decoding by LibRaw (LGPL 2.1 / CDDL 1.0) via libraw-wasm.',
-  disclaimer: 'Not affiliated with Adobe or Fujifilm. The Fujifilm-style looks are approximations, not real film simulations.',
+  disclaimer: 'Not affiliated with Fujifilm. The Fujifilm-style looks are approximations, not real film simulations.',
   byline: 'Directed by <b style="color:var(--fg)">Hert Niks</b>. Built by <b style="color:var(--fg)">Claude</b>, an AI made by Anthropic.',
   links: [['GitHub', 'https://github.com/hertn']],
 };
