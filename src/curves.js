@@ -102,6 +102,7 @@ export function createCurveEditor(host, get, onChange, onCommit = () => {}) {
     pts[drag] = [nx, clamp01(y)];
     redraw(); onChange();
   });
+  cv.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });      // iOS: no page zoom from a double tap on the curve
   const end = () => { const was = drag >= 0; if (was) onCommit(); drag = -1; if (was) redraw(); };
   // Double click / double tap on a point: an inner point is removed, an end point goes back to its original corner. Detected here
   // because iOS sends no dblclick for touches (and the first press may already have added a point).

@@ -365,6 +365,18 @@ if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
   addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }
 
+// iOS can still zoom the page on a double tap even with touch-action set: swallow the second tap of a double tap, except on
+// controls that need every click (buttons, menus, text fields).
+{
+  let t0 = 0, x0 = 0, y0 = 0;
+  document.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0]; if (!t) return;
+    const now = performance.now(), near = Math.hypot(t.clientX - x0, t.clientY - y0) < 40;
+    if (now - t0 < 320 && near && !e.target.closest?.('button, select, textarea, input:not([type=range]), a, label, summary, [role=button]')) e.preventDefault();
+    t0 = now; x0 = t.clientX; y0 = t.clientY;
+  }, { passive: false });
+}
+
 // exposed for other modules / tests
 export { panes };
 window.__app = { app, lib, setToolId, panes, setSolo, isSolo, view, geo, grid };
