@@ -188,6 +188,7 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
 
 {
   const ptrs = new Map();
+  let lastPointerType = 'mouse';
   let pinch = null, g0 = 1, useGesture = false, toolDrag = false, splitDrag = false, spaceDown = false;
   // touch: press and hold the photo to see the original, release to go back to the edited version
   let holdTimer = 0, holdOn = false, holdX = 0, holdY = 0;
@@ -215,6 +216,7 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
   canvas.addEventListener('pointerdown', (e) => {
     if (!app.loaded || !renderer.geo) return;
     const [x, y] = view.cssToLocal(e);
+    lastPointerType = e.pointerType;
     ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     try { canvas.setPointerCapture(e.pointerId); } catch {}
     if (ptrs.size === 2) {
@@ -271,7 +273,7 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
   canvas.addEventListener('pointerup', up);
   canvas.addEventListener('pointercancel', up);
   canvas.addEventListener('dblclick', (e) => {
-    if (!app.loaded || tool?.blocksDoubleClick) return;
+    if (!app.loaded || tool?.blocksDoubleClick || lastPointerType !== 'mouse') return;       // no double-tap zoom on touch screens
     const [nx, ny] = ndc(e);
     zoomTo(renderer.view.zoom > 1.01 ? 1 : Math.max(renderer.zoom100(), 1), nx, ny);
   });
