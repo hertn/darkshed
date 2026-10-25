@@ -1,5 +1,6 @@
 // The Edit panel: histogram, Auto / B&W, and the Light / Color / Effects / Detail sections.
 import { app, curItem, changed, commit, registerSection, bus } from '../app.js';
+import { invalidateAll } from '../viewport.js';
 import { PARAMS, HSL_PARAMS, GRADE_PARAMS, HSL_BANDS, BAND_HUE, SECTIONS, defaults, identityCurves } from '../params.js';
 import { curvesActive } from '../curves-math.js';
 import { createCurveEditor } from '../curves.js';
@@ -49,15 +50,28 @@ function paramSlider(host, row, opts = {}) {
   return w;
 }
 
+// Sharpening > Masking: hold Alt while dragging (or just drag, on a touch screen) to see what the sharpening reaches, in black and white
+function maskViewHook(el) {
+  const rng = el.querySelector('input.lr');
+  let down = false;
+  const set = (on) => { if (app.maskView !== on) { app.maskView = on; invalidateAll(); } };
+  const update = (e) => set(down && (e.altKey || e.pointerType === 'touch'));
+  rng.addEventListener('pointerdown', (e) => { down = true; update(e); });
+  const up = () => { down = false; set(false); };
+  addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+  addEventListener('keydown', (e) => { if (down && e.key === 'Alt') set(true); }, true);
+  addEventListener('keyup', (e) => { if (e.key === 'Alt') set(false); }, true);
+}
+
 // ---------- sections ----------
 const sectionsHost = document.createElement('div');
 // Solo mode: one section open at a time, and one sub-section open at a time (inside the open section)
 function closeOthers(keep) {
   for (const s of Object.values(sections)) if (s.el !== keep && s.el.open) s.el.open = false;
   const keepId = Object.entries(sections).find(([, s]) => s.el === keep)?.[0];
-  for (const s of Object.values(subs)) if (s.parent !== keepId && s.el.open) s.el.open = false;
+  for (const s of Object.values(subs)) if (s.parent !== keepId && s.el.open && !s.fixed) s.el.open = false;
 }
-function closeOtherSubs(keep) { for (const s of Object.values(subs)) if (s.el !== keep && s.el.open) s.el.open = false; }
+function closeOtherSubs(keep) { for (const s of Object.values(subs)) if (s.el !== keep && s.el.open && !s.fixed) s.el.open = false; }
 
 function makeSection(id, title, { open, keys, curves = false, extraReset }) {
   const el = document.createElement('details'); el.className = 'sec'; el.dataset.sec = id;
@@ -95,11 +109,13 @@ function makeSection(id, title, { open, keys, curves = false, extraReset }) {
   return body;
 }
 
-function makeSub(parent, id, title, { keys = [], curves = false, open = false, parentId = '' }) {
-  const el = document.createElement('details'); el.className = 'sub';
-  el.open = lsGet('open:' + id, open ? '1' : '0') === '1';
-  el.addEventListener('toggle', () => { lsSet('open:' + id, el.open ? '1' : '0'); if (soloOn && el.open && !document.body.classList.contains('m')) closeOtherSubs(el); });
+function makeSub(parent, id, title, { keys = [], curves = false, open = false, parentId = '', fixed = false }) {
+  const el = document.createElement('details'); el.className = 'sub' + (fixed ? ' fixed' : '');
+  el.open = fixed || lsGet('open:' + id, open ? '1' : '0') === '1';
+  if (fixed) el.addEventListener('toggle', () => { el.open = true; });          // always open: just a heading, not a fold
+  else el.addEventListener('toggle', () => { lsSet('open:' + id, el.open ? '1' : '0'); if (soloOn && el.open && !document.body.classList.contains('m')) closeOtherSubs(el); });
   const sum = document.createElement('summary');
+  if (fixed) sum.addEventListener('click', (e) => e.preventDefault());
   const ttl = document.createElement('span'); ttl.className = 'ttl'; ttl.textContent = title;
   const badge = document.createElement('i'); badge.className = 'badge'; badge.hidden = true;
   const lead = document.createElement('span'); lead.style.display = 'inline-flex'; lead.style.alignItems = 'center'; lead.style.gap = '8px';
@@ -107,7 +123,7 @@ function makeSub(parent, id, title, { keys = [], curves = false, open = false, p
   sum.append(lead);
   const body = document.createElement('div'); body.className = 'body';
   el.append(sum, body); parent.append(el);
-  subs[id] = { el, keys, curves, badge, parent: parentId };
+  subs[id] = { el, keys, curves, badge, parent: parentId, fixed };
   return body;
 }
 
@@ -362,7 +378,7 @@ export function createEditPanel() {
     PARAMS.filter((p) => p[5] === 'effects' && !p[6]).forEach((row) => paramSlider(body, row));
     for (const name of ['Vignette', 'Grain']) {
       const rows = PARAMS.filter((p) => p[5] === 'effects' && p[6] === name);
-      const sb = makeSub(body, name.toLowerCase(), name, { keys: rows.map((r) => r[0]), parentId: 'effects' });
+      const sb = makeSub(body, name.toLowerCase(), name, { keys: rows.map((r) => r[0]), parentId: 'effects', fixed: true });
       rows.forEach((row) => paramSlider(sb, row));
     }
   }
@@ -372,8 +388,8 @@ export function createEditPanel() {
     const body = makeSection('detail', 'Detail', { open: open.detail, keys: detailKeys });
     for (const name of ['Sharpening', 'Noise reduction']) {
       const rows = PARAMS.filter((p) => p[5] === 'detail' && p[6] === name);
-      const sb = makeSub(body, name === 'Sharpening' ? 'sharp' : 'nr', name, { keys: rows.map((r) => r[0]), open: name === 'Sharpening', parentId: 'detail' });
-      rows.forEach((row) => paramSlider(sb, row));
+      const sb = makeSub(body, name === 'Sharpening' ? 'sharp' : 'nr', name, { keys: rows.map((r) => r[0]), parentId: 'detail', fixed: true });
+      rows.forEach((row) => { const w = paramSlider(sb, row); if (row[0] === 'sharpMasking') maskViewHook(w.el); });
     }
     const hint = document.createElement('p'); hint.className = 'hint';
     hint.textContent = 'Detail effects are best judged at 100% zoom.';

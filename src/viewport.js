@@ -115,6 +115,7 @@ function frame(now) {
     const ovId = app.maskOverlayId || it.selectedMask;
     if (app.tool === 'mask' && ovId && (app.showMaskOverlay || app.maskOverlayTemp)) overlayIdx = st.masks.findIndex((m) => m.id === ovId);
     const edit = editDirty;
+    renderer.maskView = app.maskView;
     stats.render = renderer.draw(st, { bypass: app.bypass, editChanged: edit, measure: true, split: app.split, overlay: overlayIdx });
     dirty = false; editDirty = false;
     stats.frames++;

@@ -145,6 +145,9 @@ canvas.hist { width: 100%; height: 86px; display: block; background: var(--well)
 .sub > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; padding: 9px 16px; cursor: pointer; color: var(--fg2); font-size: 12px; user-select: none; -webkit-user-select: none; }
 .sub > summary::-webkit-details-marker { display: none; }
 .sub > summary:hover { color: var(--fg); }
+.sub.fixed > summary { cursor: default; color: var(--fg); font-weight: 600; }
+.sub.fixed > summary:hover { color: var(--fg); }
+.sub.fixed .ttl::after { display: none; }
 .sub .ttl { font-weight: 500; font-size: 12px; }
 .sub > .body { padding: 2px 0 8px; }
 

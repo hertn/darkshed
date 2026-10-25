@@ -16,6 +16,7 @@ export const app = {
   tool: 'edit',              // edit | crop | mask | presets | info
   clip: null,                // copied settings
   bypass: false,             // holding "before"
+  maskView: false,           // dragging the sharpening Masking slider with Alt (or on touch): show the sharpening mask
   split: null,               // null or 0..1 before/after divider
   renderer: null,
   loaded: null,              // { info, width, height, img } of the image on screen

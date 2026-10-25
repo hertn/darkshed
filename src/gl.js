@@ -294,7 +294,11 @@ vec3 grade(vec3 p) {
 void main() {
   vec2 px = uRegion.xy + gl_FragCoord.xy;           // image px of this fragment (row 0 = top)
   vec3 c = texture(uTex, (px - uTexOrigin) / uTexSize).rgb;
-  if (uBypass) { o = vec4(enc(c), 1.0); return; }
+  if (uBypass) {                                     // "before": no edits, but the photo's profile is part of how it is rendered
+    if (uRawOn) { c *= exp2(uRawOff); o = vec4(hlRaw(profAdj(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uProf), 0.0), 1.0); }
+    else o = vec4(enc(c), 1.0);
+    return;
+  }
   vec2 hp = px / uImgPx.y;                           // height units, for mask geometry
   if (uLensVig != 0.0) {                             // lens vignetting correction: gain grows with distance from the centre
     vec2 ctr = vec2(uImgPx.x / uImgPx.y * 0.5, 0.5);
@@ -383,6 +387,7 @@ uniform vec2 uC, uSz;
 uniform float uAspect;
 uniform bool uBypass;
 uniform float uSharp, uRadius, uMasking, uNrL, uNrC;
+uniform bool uMaskView;           // Alt-drag on the Masking slider: show what the sharpening reaches, white = sharpened
 uniform float uTexture, uClarity, uDehaze;
 uniform float uGrain, uGrainSize, uGrainRough, uGrainFade;
 uniform float uVigAmt, uVigMid, uVigFeather, uVigRound;
@@ -465,20 +470,21 @@ void main() {
     eTex = clamp(eTex, -1.0, 1.0); eClar = clamp(eClar, -1.0, 1.0); eDeh = clamp(eDeh, -1.0, 1.0); eSharp = clamp(eSharp, 0.0, 1.5);
   }
 
-  // noise reduction: luminance via a 3x3 bilateral, colour via a wide chroma blur
+  // noise reduction: luminance via a 5x5 bilateral (wider and stronger with the slider), colour via a wide chroma blur
   if (uNrL > 0.0) {
-    float sig = mix(0.015, 0.2, uNrL);
-    float rad = 1.0 + uNrL;
+    float sig = mix(0.02, 0.3, uNrL);
+    float rad = max(mix(1.0, 2.2, uNrL), 1.0 / uInvFull);          // never finer than one texel: the on-screen copy is a reduced proxy
     float l0 = luma(p);
-    vec3 acc = p; float ws = 1.0;
-    for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+    float acc = l0, ws = 1.0;
+    for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) {
       if (x == 0 && y == 0) continue;
-      vec3 s = tap(vec2(x, y) * rad);
-      float d = luma(s) - l0;
-      float w = exp(-d * d / (sig * sig)) * ((x == 0 || y == 0) ? 1.0 : 0.7);
-      acc += s * w; ws += w;
+      vec2 o2 = vec2(x, y);
+      float s2 = luma(tap(o2 * rad));
+      float d = s2 - l0;
+      float w = exp(-dot(o2, o2) / 4.5) * exp(-d * d / (sig * sig));
+      acc += s2 * w; ws += w;
     }
-    p += luma(acc / ws) - l0;
+    p += acc / ws - l0;
   }
   if (uNrC > 0.0) {
     float r = 1.0 + uNrC * 3.0;
@@ -489,9 +495,14 @@ void main() {
   }
 
   // sharpening: unsharp mask on luminance, optionally restricted to edges (masking)
+  if (uMaskView) {
+    float dm = luma(p) - blurLuma(max(uRadius, 0.8 / uInvFull));
+    float mv = uMasking > 0.0 ? smoothstep(0.0, 0.01 + uMasking * 0.08, abs(dm)) : 1.0;
+    o = vec4(vec3(mv), 1.0); return;
+  }
   if (eSharp > 0.0) {
     float l0 = luma(p);
-    float det = l0 - blurLuma(uRadius);
+    float det = l0 - blurLuma(max(uRadius, 0.8 / uInvFull));          // radius in full-size pixels, but never finer than the proxy can show
     float m = uMasking > 0.0 ? smoothstep(0.0, 0.01 + uMasking * 0.08, abs(det)) : 1.0;
     p += det * eSharp * 3.0 * m;
   }
@@ -1045,6 +1056,7 @@ export class Renderer {
     gl.uniform4fv(p.u('uMD'), pk.D);
     gl.uniform1i(p.u('uAnyDetail'), pk.anyDetail ? 1 : 0);
     gl.uniform1i(p.u('uBypass'), bypass ? 1 : 0);
+    gl.uniform1i(p.u('uMaskView'), this.maskView ? 1 : 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
