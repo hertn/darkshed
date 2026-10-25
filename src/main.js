@@ -273,7 +273,7 @@ function shortcutsModal() {
     search.addEventListener('keydown', (e) => e.stopPropagation());
     body.append(search, list, none);
     setTimeout(() => search.focus(), 50);
-  }, { buttons: [{ label: 'Close', primary: true, onClick: (m) => m.close() }] });
+  });
 }
 // full screen (like F11): hides the browser's own bars. Not offered where it cannot work (iPhone Safari) or is pointless (installed app).
 const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;

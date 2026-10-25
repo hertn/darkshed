@@ -275,7 +275,7 @@ export function createEditPanel() {
 
   const lightKeys = PARAMS.filter((p) => p[5] === 'light').map((p) => p[0]);
   const colorParams = PARAMS.filter((p) => p[5] === 'color');
-  const colorKeys = ['wbK', ...colorParams.map((p) => p[0]), ...HSL_PARAMS.map((p) => p[0]), 'bw'];
+  const colorKeys = ['wbK', ...colorParams.map((p) => p[0]), 'bw'];
   const effectsKeys = PARAMS.filter((p) => p[5] === 'effects').map((p) => p[0]);
   const detailKeys = PARAMS.filter((p) => p[5] === 'detail').map((p) => p[0]);
   const open = Object.fromEntries(SECTIONS.map(([id, , o]) => [id, o]));
@@ -316,9 +316,11 @@ export function createEditPanel() {
     body.append(wbRow);
     wbSelect.onchange = () => applyWbChoice(wbSelect.value);
     colorParams.forEach((row) => paramSlider(body, row, { track: ['temp', 'tint', 'vibrance', 'saturation'].includes(row[0]) ? row[0] : undefined, set: row[0] === 'temp' ? setTemp : undefined }));
+  }
 
-    // HSL
-    const mb = makeSub(body, 'mix', 'HSL', { keys: HSL_PARAMS.map((p) => p[0]), parentId: 'color' });
+  // ----- HSL (its own section, like Lightroom's Color Mixer) -----
+  {
+    const mb = makeSection('hsl', 'HSL', { open: open.hsl, keys: HSL_PARAMS.map((p) => p[0]) });
     const sw = document.createElement('div'); sw.className = 'swatches';
     for (const [b, label, color] of HSL_BANDS) {
       const s = document.createElement('button'); s.className = 'sw'; s.style.background = color; s.title = label;

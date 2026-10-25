@@ -42,15 +42,12 @@ export function initMobile({ setToolId }) {
   // ----- behaviour -----
   function showSection(id) {
     state.section = id; lsSet('mSection', id);
-    const secId = id === 'hsl' ? 'color' : id;                     // HSL is a view of the Color section
     for (const d of panel.querySelectorAll('details.sec')) {
-      const on = d.dataset.sec === secId;
+      const on = d.dataset.sec === id;
       d.classList.toggle('mshow', on);
-      d.classList.toggle('m-hsl', on && id === 'hsl');
       d.classList.toggle('msub', on && !!PARENT[id]);         // a view opened from a button: Reset on the left, Done on the right
       if (on) d.open = true;
     }
-    if (id === 'hsl') for (const sub of panel.querySelectorAll('details.sec[data-sec=color] details.sub')) sub.open = true;
     handle.querySelector('.sh-title').textContent = TITLES[id] || SECTIONS.find((s) => s[0] === id)?.[1] || '';
     floatCurve(id === 'curves' && state.open);
     if (id === 'grading') gradingShown();
@@ -105,9 +102,8 @@ export function initMobile({ setToolId }) {
     const tail = panel.querySelector('details.sec[data-sec=color] > summary .tail');
     tail?.prepend(mkSmall('grade-btn', 'wheel', 'Grading', () => choose('sec:grading', false)));
     tail?.prepend(mkSmall('hsl-btn', 'lum', 'HSL', () => choose('sec:hsl', false)));
-    tail?.append(mkSmall('done-btn hsl-back', 'check', 'Done', () => choose('sec:color', false)));
   }
-  panel.querySelector('details.sec[data-sec=grading] > summary .tail')?.append(mkSmall('done-btn', 'check', 'Done', () => choose('sec:color', false)));
+  for (const id of ['grading', 'hsl']) panel.querySelector(`details.sec[data-sec=${id}] > summary .tail`)?.append(mkSmall('done-btn', 'check', 'Done', () => choose('sec:color', false)));
 
   // ----- histogram becomes a small overlay on the photo -----
   const histWrap = () => document.querySelector('.hist-wrap');      // it lives over the photo while floating, so look everywhere

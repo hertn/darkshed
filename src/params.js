@@ -80,6 +80,7 @@ export const KEY_DEFAULT = Object.fromEntries(ALL_PARAMS.map((p) => [p[0], p[7]]
 export const SECTIONS = [
   ['light', 'Light', true],
   ['color', 'Color', true],
+  ['hsl', 'HSL', false],
   ['grading', 'Color grading', false],
   ['curves', 'Curves', false],
   ['effects', 'Effects', false],

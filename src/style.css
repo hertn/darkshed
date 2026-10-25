@@ -254,7 +254,7 @@ select:focus, input[type=text]:focus, input[type=search]:focus, input[type=numbe
 .modal h3.with-x { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .modal .m-x { flex: none; width: 32px; height: 32px; margin: -4px -8px -4px 0; border: 0; border-radius: 50%; background: transparent; color: var(--mut); font-size: 24px; line-height: 1; cursor: pointer; }
 .modal .m-x:hover { background: var(--panel2); color: var(--fg); }
-.modal h3 { margin: 0; padding: 16px 20px 6px; font-size: 16px; font-weight: 600; }
+.modal h3 { position: sticky; top: 0; z-index: 1; background: var(--panel); margin: 0; padding: 16px 20px 6px; font-size: 16px; font-weight: 600; }
 .modal .m-body { padding: 4px 4px 8px; }
 .modal .m-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--line); }
 .modal .field-row label { width: 96px; }
@@ -426,19 +426,13 @@ body.m .btn.m-only { display: inline-flex !important; }
 }
 
 @media (max-width: 860px) { .mini.bw-btn.bw-on { background: var(--acc); color: #fff; } }
-/* phone, Color section: B&W far left, HSL and Grading on the right. The HSL view shows only the HSL part, with a way back */
+/* phone, Color section: B&W far left, HSL and Grading on the right. HSL and Grading are their own sections, each with a way back */
 @media (max-width: 860px) {
   body.m details.sec.mshow > summary .bw-btn { margin-right: auto; pointer-events: auto; }
-  body.m details.sec[data-sec=color]:not(.m-hsl) .hsl-back { display: none !important; }
-  body.m details.sec[data-sec=color]:not(.m-hsl) > .body > .sub { display: none; }
-  body.m details.sec.m-hsl > summary .bw-btn, body.m details.sec.m-hsl > summary .grade-btn, body.m details.sec.m-hsl > summary .hsl-btn { display: none !important; }
-  body.m details.sec.m-hsl > .body > :not(.sub) { display: none; }
   body.m details.sec.msub > summary .tail { flex: 1; }
   body.m details.sec.msub > summary .pwr { margin-left: auto; }
   body.m details.sec.msub > summary .reset-btn[hidden] { display: inline-flex; opacity: .35; pointer-events: none; }      /* always there, dimmed while there is nothing to reset */
   body.m details.sec.msub > summary .done-btn { background: var(--acc); color: #fff; font-weight: 600; padding: 6px 14px; }
-  body.m details.sec.m-hsl > .body > .sub { border-top: 0; margin: 0; }
-  body.m details.sec.m-hsl .sub > summary { display: none; }
 }
 
 /* phone: the grid is for culling, so the edit sheet and tool dock get out of the way */
