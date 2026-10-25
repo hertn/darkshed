@@ -1,5 +1,5 @@
 // Builds the self-contained download for one system:  node launcher/build-release.mjs <target> [version]
-//   targets: mac-arm64, mac-x64, win-x64, linux-x64, linux-arm64
+//   targets: mac-arm64, mac-x64, win-x64, linux-x64, linux-arm64 (the files are named mac-apple-silicon, mac-intel, windows, linux-intel-amd, linux-arm)
 // Needs `npm run build` to have been run (dist/ must exist). Writes release/DarkShed-<version>-<target>.zip (or .tar.gz for Linux).
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,11 +10,11 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const NODE_VERSION = '22.12.0';
 const TARGETS = {
-  'mac-arm64': { node: 'darwin-arm64', ext: 'tar.gz', bin: 'bin/node', os: 'mac' },
-  'mac-x64': { node: 'darwin-x64', ext: 'tar.gz', bin: 'bin/node', os: 'mac' },
-  'win-x64': { node: 'win-x64', ext: 'zip', bin: 'node.exe', os: 'win' },
-  'linux-x64': { node: 'linux-x64', ext: 'tar.xz', bin: 'bin/node', os: 'linux' },
-  'linux-arm64': { node: 'linux-arm64', ext: 'tar.xz', bin: 'bin/node', os: 'linux' },
+  'mac-arm64': { node: 'darwin-arm64', ext: 'tar.gz', bin: 'bin/node', os: 'mac', label: 'mac-apple-silicon' },
+  'mac-x64': { node: 'darwin-x64', ext: 'tar.gz', bin: 'bin/node', os: 'mac', label: 'mac-intel' },
+  'win-x64': { node: 'win-x64', ext: 'zip', bin: 'node.exe', os: 'win', label: 'windows' },
+  'linux-x64': { node: 'linux-x64', ext: 'tar.xz', bin: 'bin/node', os: 'linux', label: 'linux-intel-amd' },
+  'linux-arm64': { node: 'linux-arm64', ext: 'tar.xz', bin: 'bin/node', os: 'linux', label: 'linux-arm' },
 };
 const target = process.argv[2];
 const t = TARGETS[target];
@@ -23,7 +23,7 @@ const version = process.argv[3] || JSON.parse(fs.readFileSync(path.join(ROOT, 'p
 if (!fs.existsSync(path.join(ROOT, 'dist', 'index.html'))) { console.error('Run "npm run build" first.'); process.exit(1); }
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'darkshed-build-'));
-const name = `DarkShed-${version}-${target}`;
+const name = `DarkShed-${version}-${t.label}`;
 const dir = path.join(work, 'DarkShed');
 fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
 

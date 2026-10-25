@@ -39,9 +39,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, target: linux-x64, ext: tar.gz }
-          - { os: macos-latest, target: mac-arm64, ext: zip }
-          - { os: windows-latest, target: win-x64, ext: zip }
+          - { os: ubuntu-latest, file: linux-intel-amd, ext: tar.gz }
+          - { os: macos-latest, file: mac-apple-silicon, ext: zip }
+          - { os: windows-latest, file: windows, ext: zip }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/download-artifact@v4
@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           mkdir run && cd run
-          f="../dl/DarkShed-${{ needs.build.outputs.version }}-${{ matrix.target }}.${{ matrix.ext }}"
+          f="../dl/DarkShed-${{ needs.build.outputs.version }}-${{ matrix.file }}.${{ matrix.ext }}"
           if [ "${{ matrix.ext }}" = zip ]; then unzip -q "$f"; else tar -xzf "$f"; fi
           ls DarkShed
       - name: Start it and ask it for the page (Mac / Linux)
