@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.7
+- Fixed saving a preset not keeping all settings: exposure, white balance (Temp, Tint), sharpening, noise reduction and the Optics settings are now saved too. Presets saved before this are missing them: save them again to include them.
+
 ## 0.9.6
 - Preset Amount slider now runs 0-100 (100 = the full preset, 0 = as if it was never applied, everything in between is a smooth blend). The old 0-200 range could overshoot.
 - Fixed Amount turning a preset off below 50 and on above it: curves with a different number of points now blend smoothly. (B&W is still an on/off switch and flips at 50.)
