@@ -4,7 +4,7 @@ import { extractExif, parseExif } from './exif.js';
 // Longest edge of the editing proxy. Keeps the GPU texture ~50MB (RGBA16F) so iOS Safari stays happy.
 export const MAX_PROXY = 3200;
 
-const RAW_EXT = /\.(raf|dng|cr2|cr3|nef|arw|orf|rw2|pef|srw|raw)$/i;
+const RAW_EXT = /\.(raf|dng|cr2|cr3|nef|arw|orf|rw2|pef|srw|raw|3fr|fff)$/i;
 
 // float32 -> float16 bit pattern, for v in [0, 65504]
 const f32 = new Float32Array(1);

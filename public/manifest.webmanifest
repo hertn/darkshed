@@ -14,6 +14,6 @@
     { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "file_handlers": [
-    { "action": "/", "accept": { "image/*": [".jpg", ".jpeg", ".png", ".heic", ".dng", ".raf", ".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2"] } }
+    { "action": "/", "accept": { "image/*": [".jpg", ".jpeg", ".png", ".heic", ".dng", ".raf", ".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2", ".3fr", ".fff"] } }
   ]
 }

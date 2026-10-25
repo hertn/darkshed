@@ -87,7 +87,7 @@ export function renderStrip() {
   });
   if (items.length) {
     const add = document.createElement('label'); add.className = 'tile add'; add.title = 'Add photos';
-    add.innerHTML = icon('plus', 22) + '<input type="file" multiple hidden accept=".raf,.dng,.cr2,.cr3,.nef,.arw,.orf,.rw2,image/*">';
+    add.innerHTML = icon('plus', 22) + '<input type="file" multiple hidden accept=".raf,.dng,.cr2,.cr3,.nef,.arw,.orf,.rw2,.3fr,.fff,image/*">';
     add.querySelector('input').onchange = (e) => { addFiles(e.target.files); e.target.value = ''; };
     strip.append(add);
   }

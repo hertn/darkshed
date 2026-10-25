@@ -153,5 +153,5 @@ export function renderState(it) {
     }
   }
   const masks = it.masks.filter((m) => m.enabled !== false);
-  return { p, masks, wbGain: it.wb && p.wbK ? kelvinGains(it.wb, p.wbK) : null, camera: it.camera || '', camFit: it.camFit || null, raw: /\.(raf|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|x3f|raw|3fr|iiq|erf|mrw|kdc|dcr)$/i.test(it.file?.name || '') };
+  return { p, masks, wbGain: it.wb && p.wbK ? kelvinGains(it.wb, p.wbK) : null, camera: it.camera || '', camFit: it.camFit || null, raw: /\.(raf|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|x3f|raw|3fr|iiq|erf|mrw|kdc|dcr|fff)$/i.test(it.file?.name || '') };
 }

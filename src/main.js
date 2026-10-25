@@ -169,7 +169,7 @@ bus.on('filter', refreshTop);
 // ---------- files ----------
 const fileInput = document.createElement('input');
 fileInput.type = 'file'; fileInput.multiple = true; fileInput.hidden = true;
-fileInput.accept = '.raf,.dng,.cr2,.cr3,.nef,.arw,.orf,.rw2,image/*';
+fileInput.accept = '.raf,.dng,.cr2,.cr3,.nef,.arw,.orf,.rw2,.3fr,.fff,image/*';
 fileInput.onchange = () => { lib.addFiles(fileInput.files); fileInput.value = ''; };
 document.body.append(fileInput);
 $('fileEmpty').onchange = (e) => { lib.addFiles(e.target.files); e.target.value = ''; };
