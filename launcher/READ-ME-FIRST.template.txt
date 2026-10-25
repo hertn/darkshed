@@ -1,0 +1,99 @@
+DarkShed - READ ME FIRST
+========================
+
+DarkShed is a photo editor that runs in your web browser. Your photos never
+leave your device. This folder runs a tiny program on your computer that opens
+DarkShed and keeps your presets, so you can use the same presets on your phone
+or tablet. You do not need to install anything else.
+
+
+1. START IT
+-----------
+{{START_STEPS}}
+
+A window opens and your browser opens DarkShed. The window shows two
+addresses:
+
+  - the address for this computer, and
+  - the address for your phone or tablet (it starts with http://192.168...).
+
+Keep that window open while you use DarkShed. Close it to stop DarkShed.
+
+{{FIRST_RUN_NOTE}}
+
+
+2. USE IT ON YOUR PHONE OR TABLET
+---------------------------------
+1. Your computer must be on, DarkShed must be running (step 1, or step 3
+   below), and the phone must be on the same Wi-Fi.
+2. Open the phone address from the window in your phone's browser
+   (Safari on iPhone and iPad).
+3. On iPhone and iPad you can tap Share > Add to Home Screen to get an app icon.
+
+Your presets and LUTs are saved in the "data" folder in this folder and are
+shared by every device that opens DarkShed from the SAME address. So on your
+computer, also use the address that starts with http://192.168... (not
+"localhost"), otherwise the computer and the phone do not share presets.
+
+Photos and settings are NOT shared: each device keeps its own.
+
+The first time, your computer may ask whether to allow DarkShed (or "node")
+to accept network connections. Choose Allow, or your phone cannot reach it.
+
+If the address changes later (your router restarted), look at the window
+again. It always shows the current one.
+
+
+3. OPTIONAL: KEEP IT RUNNING IN THE BACKGROUND
+----------------------------------------------
+If you do not want to leave the window open, you can set DarkShed to start by
+itself every time you log in to this computer, with no window.
+
+  {{BG_STEPS}}
+
+It asks for an optional sync password, then tells you the address.
+Things to know:
+
+  - The computer must be awake. If it sleeps or is shut down, your phone
+    cannot reach DarkShed until it wakes up.
+  - It uses almost no power or memory.
+  - Without a password, anyone on your Wi-Fi who opens the address could see or
+    change your presets (they cannot reach any photos, because photos are never
+    stored by DarkShed). If you share your Wi-Fi with people you do not trust,
+    set a password. Then enter the same password on each device under
+    Menu > Sync & settings > Token.
+  - If you move or rename this folder later, run the "run in background" step
+    again.
+
+
+4. STOP AND UNINSTALL
+---------------------
+Only used it by double-clicking Start? Close the window. To remove DarkShed,
+delete this folder. Copy the "data" folder first if you want to keep your
+presets.
+
+Used "run in background"? First do this:
+
+  {{STOP_STEPS}}
+
+Then delete this folder. If you deleted the folder first, remove the leftover
+start-up entry by hand:
+
+{{MANUAL_REMOVE}}
+
+DarkShed also keeps a crash-recovery copy of the photos you open, inside each
+browser (not in this folder). To clear it, open DarkShed > Menu >
+Sync & settings > "Delete all stored copies", or clear the site data for
+the address in your browser.
+
+
+5. IF SOMETHING GOES WRONG
+--------------------------
+- The window closes right away: open it from a terminal/command prompt to see
+  the message, or look at data/darkshed.log if you use the background mode.
+- "Address already in use": another program uses the port. DarkShed picks the
+  next free one and shows it in the window.
+- Your phone cannot connect: check it is on the same Wi-Fi (not guest or
+  mobile data), that the window or background mode is running, and that the
+  firewall allowed it (see step 2).
+- More help and the source code: https://github.com/hertn/darkshed

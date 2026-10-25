@@ -4,7 +4,7 @@
 
 *A darkroom, but in a shed.*
 
-A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on Mac, iPad and iPhone. You host it yourself, on a home server or any machine that runs Docker.
+A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on Mac, iPad and iPhone. You host it yourself: on your own computer with a download you double-click, or on a home server with Docker.
 
 - **Private:** editing happens on your own device (decoding with LibRaw/WebAssembly, rendering on the GPU). Photos are never uploaded, not even to your server.
 - **Synced presets:** your presets and LUTs sync between all your devices through your own server.
@@ -94,7 +94,17 @@ That's it. Your presets are saved in the `data` folder next to the compose file.
 
 **Update by hand:** `docker compose pull && docker compose up -d`
 
-### Without Docker
+### Without Docker: download and double-click
+
+No Docker, no Node.js, no terminal. Go to the [Releases page](https://github.com/hertn/darkshed/releases), download the file for your system (Mac: Apple chip `mac-arm64` or Intel `mac-x64`, Windows: `win-x64`, Linux: `linux-x64` or `linux-arm64`), unzip it and open **READ ME FIRST.txt**. It is short, and ships in every download.
+
+- **Start DarkShed** opens it in your browser and shows the address to use on your phone (same Wi-Fi).
+- Presets and LUTs are saved in the `data` folder next to it and are shared by every device that opens DarkShed from the same address. Photos and settings stay on each device.
+- **Run in background** (optional) starts it by itself when you log in, with no window, so your phone can use it without an open window. **Stop running in background** undoes that. The computer has to be awake, and you can set an optional sync password.
+- To uninstall, stop the background mode if you used it, then delete the folder.
+- The files are not code-signed, so Mac and Windows show a one-time warning on first start (the READ ME explains how to get past it).
+
+### Without Docker: from source
 
 Needs Node.js 20 or newer.
 
