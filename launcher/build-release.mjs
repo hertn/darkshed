@@ -59,7 +59,10 @@ fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module"}\n');
 
 // 3. the double-click files and the instructions for this system
 const wr = path.join(ROOT, 'launcher', 'wrappers', t.os);
-for (const f of fs.readdirSync(wr)) { fs.copyFileSync(path.join(wr, f), path.join(dir, f)); fs.chmodSync(path.join(dir, f), f.endsWith('.bat') ? 0o644 : 0o755); }
+for (const f of fs.readdirSync(wr)) {
+  const text = fs.readFileSync(path.join(wr, f), 'utf8').replace(/\r?\n/g, f.endsWith('.bat') ? '\r\n' : '\n');   // .bat files need Windows line endings
+  fs.writeFileSync(path.join(dir, f), text); fs.chmodSync(path.join(dir, f), f.endsWith('.bat') ? 0o644 : 0o755);
+}
 const S = {
   mac: {
     START_STEPS: '  Double-click  "Start DarkShed.command".',
