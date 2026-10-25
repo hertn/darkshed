@@ -18,10 +18,10 @@ export function applyLook(params, patch, profile = '') {
   for (const [k, v] of Object.entries(patch)) params[k] = clone(v);
   if (patch.curves) params.curves = { ...identityCurves(), ...clone(patch.curves) };
 }
-/** Snapshot of the current look keys (what a user preset stores). */
+/** Snapshot of the current settings (what a user preset stores): the look keys plus exposure, white balance, detail and optics. */
 export function snapshotLook(params) {
   const o = {};
-  for (const k of LOOK_KEYS) if (params[k] !== KEY_DEFAULT[k]) o[k] = params[k];
+  for (const k of [...ALL_PARAMS.map((p) => p[0]), 'wbK']) if (params[k] !== undefined && params[k] !== (KEY_DEFAULT[k] ?? 0)) o[k] = params[k];
   if (params.bw) o.bw = 1;
   if (params.lut) { o.lut = params.lut; o.lutAmount = params.lutAmount; }
   o.curves = clone(params.curves);
