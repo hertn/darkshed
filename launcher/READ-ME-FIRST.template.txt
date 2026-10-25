@@ -7,19 +7,30 @@ DarkShed and keeps your presets, so you can use the same presets on your phone
 or tablet. You do not need to install anything else.
 
 
+0. BEFORE YOU START
+-------------------
+{{UNPACK_STEPS}}
+
+Put the DarkShed folder where you want to keep it, for example in Documents
+or Applications, NOT in Downloads (which often gets cleaned out). If you move
+it later, see "Moving or updating" below.
+
+
 1. START IT
 -----------
 {{START_STEPS}}
 
-A window opens and your browser opens DarkShed. The window shows two
-addresses:
+{{FIRST_RUN_NOTE}}
+
+A window with text opens, and your browser opens DarkShed. The window looks
+technical, but it is normal: it is the small program that runs DarkShed.
+It shows two addresses:
 
   - the address for this computer, and
   - the address for your phone or tablet (it starts with http://192.168...).
 
-Keep that window open while you use DarkShed. Close it to stop DarkShed.
-
-{{FIRST_RUN_NOTE}}
+Leave that window open while you use DarkShed (you can minimise it). Closing
+it stops DarkShed.
 
 
 2. USE IT ON YOUR PHONE OR TABLET
@@ -37,8 +48,7 @@ computer, also use the address that starts with http://192.168... (not
 
 Photos and settings are NOT shared: each device keeps its own.
 
-The first time, your computer may ask whether to allow DarkShed (or "node")
-to accept network connections. Choose Allow, or your phone cannot reach it.
+{{FIREWALL_NOTE}}
 
 If the address changes later (your router restarted), look at the window
 again. It always shows the current one.
@@ -87,7 +97,20 @@ Sync & settings > "Delete all stored copies", or clear the site data for
 the address in your browser.
 
 
-5. IF SOMETHING GOES WRONG
+5. MOVING OR UPDATING
+---------------------
+To update to a newer version: download the new version from
+https://github.com/hertn/darkshed/releases/latest (use the files under
+"Assets", ignore the "Source code" ones), unpack it, and copy the "data" folder
+from the old DarkShed folder into the new one (this keeps your presets). If you
+used "run in background", first run "stop running in background" in the OLD
+folder, then run "run in background" in the new one. Then delete the old folder.
+
+Moved the folder? If you use "run in background", run "stop running in
+background" and then "run in background" again from the new location.
+
+
+6. IF SOMETHING GOES WRONG
 --------------------------
 - The window closes right away: open it from a terminal/command prompt to see
   the message, or look at data/darkshed.log if you use the background mode.
