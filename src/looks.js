@@ -65,9 +65,28 @@ export function applyPreset(params, preset, profile = '') {
 
 const RANGE = Object.fromEntries(ALL_PARAMS.map((p) => [p[0], [p[2], p[3], p[4]]]));
 /** Blend between the photo's settings before a preset (base) and after it (target); amount 0..2 (100% = the preset itself). */
-export function blendParams(params, base, target, amount) {
+const curveAt = (c, x) => {
+  if (x <= c[0][0]) return c[0][1];
+  for (let i = 1; i < c.length; i++) if (x <= c[i][0]) { const t = (x - c[i - 1][0]) / ((c[i][0] - c[i - 1][0]) || 1); return c[i - 1][1] + (c[i][1] - c[i - 1][1]) * t; }
+  return c[c.length - 1][1];
+};
+/** Curves with different point sets: blend their values at every x either one has a point. */
+function blendCurve(ca, cb, amount) {
+  if (amount <= 0) return clone(ca);
+  if (amount >= 1) return clone(cb);
+  const xs = [...new Set([...ca, ...cb].map((p) => p[0]))].sort((x, y) => x - y);
+  return xs.map((x) => { const y = curveAt(ca, x); return [x, Math.min(1, Math.max(0, y + (curveAt(cb, x) - y) * amount))]; });
+}
+
+export function blendParams(params, base, target, amount, asShotK = 0) {
   for (const k of Object.keys(target)) {
-    const a = base[k], b = target[k];
+    let a = base[k], b = target[k];
+    if (k === 'wbK' && a !== b && asShotK) {           // 0 means "as shot": blend from the real as-shot Kelvin, not from 0 K
+      a = a || asShotK; b = b || asShotK;
+      params.wbK = Math.round((a + (b - a) * amount) / 50) * 50;
+      if (params.wbK === asShotK && !(base.wbK && target.wbK)) params.wbK = 0;
+      continue;
+    }
     if (typeof b === 'number' && typeof a === 'number' && a !== b && RANGE[k]) {
       const [lo, hi, step] = RANGE[k];
       const v = Math.min(hi, Math.max(lo, a + (b - a) * amount));
@@ -78,7 +97,7 @@ export function blendParams(params, base, target, amount) {
   for (const ch of ['rgb', 'r', 'g', 'b']) {
     const ca = base.curves[ch], cb = target.curves[ch];
     if (JSON.stringify(ca) === JSON.stringify(cb)) continue;
-    params.curves[ch] = same(ca, cb) ? cb.map((p, i) => [p[0], Math.min(1, Math.max(0, ca[i][1] + (p[1] - ca[i][1]) * amount))]) : clone(amount >= 0.5 ? cb : ca);
+    params.curves[ch] = same(ca, cb) ? cb.map((p, i) => [p[0], Math.min(1, Math.max(0, ca[i][1] + (p[1] - ca[i][1]) * amount))]) : blendCurve(ca, cb, amount);
   }
   if (base.bw !== target.bw) params.bw = amount >= 0.5 ? target.bw : base.bw;
   if (base.lut !== target.lut) { params.lut = amount > 0 ? target.lut : base.lut; params.lutAmount = Math.round(Math.min(100, (target.lutAmount ?? 100) * amount)); }

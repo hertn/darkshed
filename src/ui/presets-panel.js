@@ -6,7 +6,8 @@ import { toXmp } from '../lrpreset.js';
 import { zip } from '../zip.js';
 import { validPreset } from '../merge.js';
 import { parseCube } from '../lut.js';
-import { makeSmall } from '../decode.js';
+import { makeSmall, isRaw } from '../decode.js';
+import { asShotKelvin } from '../wb.js';
 import { slider } from './slider.js';
 import { icon } from './icons.js';
 import { modal, toast, menu } from './overlays.js';
@@ -52,8 +53,8 @@ export function createPresetsPanel({ editSync }) {
   let amountState = null;      // { id, base, target, name }
   const amountBox = document.createElement('div');
   const amount = slider({
-    label: 'Amount', min: 0, max: 200, step: 1, def: 100, value: 100, format: (v) => String(Math.round(v)),
-    onInput: (v) => { const it = curItem(), st = amountState; if (!it || !st || st.id !== it.id) return; blendParams(it.params, st.base, st.target, v / 100); st.cur = clone(it.params); editSync(); changed({ edit: true }); },
+    label: 'Amount', min: 0, max: 100, step: 1, def: 100, value: 100, format: (v) => String(Math.round(v)),
+    onInput: (v) => { const it = curItem(), st = amountState; if (!it || !st || st.id !== it.id) return; const wb = app.loaded?.info?.wb; blendParams(it.params, st.base, st.target, v / 100, wb && isRaw(it.file) ? asShotKelvin(wb) : 0); st.cur = clone(it.params); editSync(); changed({ edit: true }); },
     onChange: () => commit('Preset amount'),
   });
   amountBox.className = 'amount-box off'; amountBox.inert = true; amountBox.title = 'Apply a preset or look to adjust its strength';
