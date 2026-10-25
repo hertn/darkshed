@@ -40,3 +40,9 @@ Browser-based RAW + JPEG editor (plain JavaScript, WebGL2, LibRaw via WebAssembl
 
 ## Releasing
 Push to `main`. GitHub Actions builds the Docker image `ghcr.io/hertn/darkshed:latest`; hosts running the compose file update from it (Watchtower).
+
+## Downloads without Docker (launcher/)
+- `launcher/` builds self-contained downloads (official Node.js bundled in `runtime/`, built app, `server/`, `src/merge.js`, a `data/` folder next to it). `launcher/start.mjs` starts the server, picks a free port, prints the phone address (first private IPv4) and opens the browser at it, so the computer and the phone share one address (and presets). Settings in `data/launcher.json` (`port`, `token`).
+- `launcher/service.mjs install|remove|status` is the optional run-in-background mode: macOS LaunchAgent, Windows scheduled task (runs `hidden.vbs`), Linux systemd user unit. `remove` works from names, not paths, so it still works after the folder moved. `DARKSHED_SERVICE_LABEL` lets tests use a different name.
+- `node launcher/build-release.mjs <mac-arm64|mac-x64|win-x64|linux-x64|linux-arm64> [version]` after `npm run build` writes `release/`. `.github/workflows/release.yml` builds all five on a version tag (`v*`) or by hand, smoke-tests mac-arm64, win-x64 and linux-x64 on real runners and publishes to GitHub Releases. The user-facing instructions are `launcher/READ-ME-FIRST.template.txt` (filled per system by the build script): keep it in step with the scripts.
+- Tested locally (Intel Mac): start, ping, token, background install, restart after kill, remove. Not tested by hand: Windows, Linux, Apple-silicon Macs (only CI smoke tests), linux-arm64 (not tested at all). Files are unsigned: Gatekeeper and SmartScreen warnings are documented in the READ ME.
