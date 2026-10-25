@@ -224,7 +224,7 @@ export function openExportDialog() {
     const sharp = sel([['none', 'None'], ['low', 'Low'], ['standard', 'Standard'], ['high', 'High']], P.outSharp); row('Output sharpening', sharp);
     const rawQ = sel([['1', 'Standard (faster)'], ['3', 'High (slower, best detail)']], P.rawQuality);
     const rawRow = row('RAW demosaic', rawQ);
-    const hasRaw = (list) => list.some((i) => /\.(raf|dng|cr2|cr3|nef|arw|orf|rw2|pef|srw)$/i.test(i.file.name));
+    const hasRaw = (list) => list.some((i) => /\.(raf|dng|cr2|cr3|nef|arw|orf|rw2|pef|srw|3fr|fff)$/i.test(i.file.name));
     const targets = () => (scope.value === 'all' ? app.items : scope.value === 'sel' ? selected : [cur]);
 
     const meta = document.createElement('label'); meta.className = 'check';
