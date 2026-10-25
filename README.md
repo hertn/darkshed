@@ -4,11 +4,9 @@
 
 *A darkroom, but in a shed.*
 
-A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on Mac, iPad and iPhone. You host it yourself: on your own computer with a download you double-click, or on a home server with Docker.
+A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on Mac, Windows, Linux, iPad and iPhone. You run it yourself, on your own computer or a home server, and your presets sync between all your devices.
 
-- **Private:** editing happens on your own device (decoding with LibRaw/WebAssembly, rendering on the GPU). Photos are never uploaded, not even to your server.
-- **Synced presets:** your presets and LUTs sync between all your devices through your own copy of DarkShed, on your computer or a home server.
-- **Made for RAW:** Fujifilm RAF, DNG, CR2/3, NEF, ARW and more, plus JPEG, PNG and HEIC. Imports and exports Lightroom presets.
+**Private by design:** editing happens on your own device (RAW decoding with LibRaw/WebAssembly, rendering on the GPU). Photos are never uploaded, not even to your own server.
 
 *Why it exists:* Lightroom costs money, and the other vibe-coded "Lightroom killers" were desktop-only or tied to specific hardware. DarkShed is one web app that works on whatever you own.
 
@@ -44,26 +42,24 @@ The same app on a phone, with a layout built for touch:
 
 ---
 
-## What it does
+## Features
 
-- **Edit:** Light, Curves, Color (white balance with presets, HSL, color grading), Effects (texture, clarity, dehaze, vignette, grain), Detail (sharpening, noise reduction), Optics (color fringing, distortion), Calibration, B&W and LUTs.
-- **RAW profiles:** a Profiles tab (RAW files only) with a preview of each: Standard, Camera Matching (copies the look of the JPEG your camera stored in the file, so it works for any camera), Neutral, Vivid, Landscape and Portrait. RAW photos get a base tone curve fitted to common cameras, so they open with contrast instead of flat.
-- **RAW white balance in Kelvin:** the Temp slider runs 2000-50000 K in steps of 50, and the Daylight, Cloudy, Shade, Tungsten, Fluorescent and Flash presets, Auto and the picker set a real Kelvin from the camera's colour data. JPEGs keep the plain -100 to +100 scale.
-- **Local tools:** crop and straighten, spot removal (heal and clone), masks (linear, radial, brush, luminance and color range, with add, subtract and intersect).
-- **Library:** multiple photos with a filmstrip and a grid for culling (ratings, flags, filters). Double-click or double-tap a photo in the grid to open it.
-- **Made for the keyboard on desktop:** one key per tool (E, C, Q, M, L, R, I), press the open tool again to fold its panel away, S toggles the filmstrip, and **Menu → Keyboard shortcuts** lists everything with a search.
-- **Presets:** search, save your own, import `.xmp`, `.lrtemplate` and `.zip` packs and `.cube` LUTs, export as `.xmp`. An Amount slider fades a preset in and out, tapping an applied preset again removes it, and presets replace each other instead of stacking. A few Fujifilm-inspired **Looks** are built in; they keep your exposure and white balance.
+- **Editing:** light, curves, color (white balance, HSL, color grading), effects, detail, optics, B&W and calibration, plus crop, spot healing and masks (linear, radial, brush and range).
+- **RAW and more:** Fujifilm RAF, DNG, CR2/3, NEF, ARW and others, plus JPEG, PNG and HEIC. RAW files get camera-style profiles, including one that copies the look of the JPEG your camera stored in the file.
+- **Presets and LUTs:** import Lightroom presets (`.xmp`, `.lrtemplate`, `.zip`) and `.cube` LUTs, export your own as `.xmp`. A few Fujifilm-inspired looks are built in.
+- **Library:** a filmstrip and a grid for culling, with ratings, flags and filters.
 - **Export:** JPEG, PNG, WebP or 16-bit TIFF, with resize, output sharpening, sRGB or Display P3, and batch export as a ZIP.
-- **Safety net:** undo and redo, autosave, and copies of your open photos kept on the device so work survives an app reload. Stored copies clean themselves up (7 days unused, 1 GB cap by default; changeable in Settings).
+- **Safety net:** undo and redo, autosave, and recovery copies of your open photos kept on the device.
+- **Built for desktop and touch:** one-key tool shortcuts on desktop (**Menu → Keyboard shortcuts**), and a separate layout made for phones.
 
 The Fujifilm-style looks are approximations built from the sliders, not Fujifilm's own film simulations. RAW rendering and the sliders are tuned to resemble Lightroom, but they are not an exact match.
 
 ## Install
 
-Pick the way that suits you. Each one is collapsed: click it to open the steps.
+<table><tr><td>
 
 <details>
-<summary><b>On your own computer (Mac, Windows or Linux): download and double-click</b>. The easiest way, nothing else to install</summary>
+<summary><b>💻&nbsp; On your own computer</b>: Mac, Windows or Linux. The easiest way, nothing else to install.</summary>
 
 <br>
 
@@ -88,14 +84,18 @@ The files are not code-signed, so Mac and Windows show a one-time warning the fi
 **Good to know**
 
 - Presets and LUTs are saved in the `data` folder next to the app. Every device that opens DarkShed from the same address shares them. Photos and settings stay on each device.
+- On your computer, open the network address that the window shows (it starts with `http://192.168…`), not `localhost`, so the computer and the phone share presets.
 - **Run in background** (optional) starts DarkShed by itself when you log in, with no window, so your phone can use it without an open window on your computer. The computer has to be awake. It can ask you for a sync password. **Stop running in background** undoes it.
 - **Uninstall:** run **Stop running in background** if you used it, then delete the folder. Copy the `data` folder first if you want to keep your presets.
-- On your computer, open the network address that the window shows (it starts with `http://192.168…`), not `localhost`, so the computer and the phone share presets.
 
 </details>
 
+</td></tr></table>
+
+<table><tr><td>
+
 <details>
-<summary><b>On a home server: Docker</b></summary>
+<summary><b>🐳&nbsp; On a home server</b>: with Docker.</summary>
 
 <br>
 
@@ -116,9 +116,7 @@ docker compose up -d
 
 **3. Open it**
 
-Go to `http://<your-server-ip>:8080` in a browser.
-
-That's it. Your presets are saved in the `data` folder next to the compose file.
+Go to `http://<your-server-ip>:8080` in a browser. Your presets are saved in the `data` folder next to the compose file.
 
 **Things you might need to change in `docker-compose.yml`:**
 
@@ -133,22 +131,7 @@ That's it. Your presets are saved in the `data` folder next to the compose file.
 
 </details>
 
-<details>
-<summary><b>From source</b> (for developers)</summary>
-
-<br>
-
-Needs Node.js 20 or newer.
-
-```bash
-npm install
-npm run build
-npm start        # http://localhost:8080
-```
-
-Environment variables: `DARKSHED_PORT` (default 8080), `DARKSHED_DATA` (default `./data`), `DARKSHED_TOKEN` (optional sync password).
-
-</details>
+</td></tr></table>
 
 ## Use it on iPhone and iPad
 
@@ -159,24 +142,30 @@ Environment variables: `DARKSHED_PORT` (default 8080), `DARKSHED_DATA` (default 
 Good to know:
 
 - **Add to Home Screen works over plain `http://`** on a home network. For access from outside your home, put it behind HTTPS (for example `tailscale serve --bg 8080`, a Cloudflare tunnel, or a reverse proxy like Caddy). HTTPS is also needed for offline use.
-- JPEG exports keep their full size on iPhone and iPad (DarkShed encodes them itself). PNG and WebP exports are limited to about 16 megapixels there (a Safari limit), and 16-bit TIFF is desktop only.
+- JPEG exports keep their full size. PNG and WebP exports are limited to about 16 megapixels there (a Safari limit), and 16-bit TIFF is desktop only.
 - Open RAW files through the **Files** picker. The Photos picker may hand over a converted JPEG.
 
 ## Syncing presets
 
-Sync is automatic when you open the app **from your own DarkShed** (the download running on your computer, or a Docker server), and optional: everything also works on a single device without it. There is nothing to set up. Leave **Server URL** empty, and enter a **Token** only if you set a sync password (`DARKSHED_TOKEN` with Docker, or the password asked by **Run in background**).
+Sync is automatic when you open the app **from your own DarkShed** (the download on your computer, or a Docker server), and optional: everything also works on a single device without it. Leave **Server URL** empty, and enter a **Token** only if you set a sync password (`DARKSHED_TOKEN` with Docker, or the password asked by **Run in background**).
 
-- **Use the same address on every device.** Presets sync through the server you opened the app from. A test copy (for example `localhost:5173` from `npm run dev`) or a different address is a separate app with its own presets and does not sync.
-- **When it syncs:** when the app opens, a moment after you change a preset, and when you switch back to the app. A preset added on one device shows up on another the next time that device opens the app or comes back to it.
+- **Use the same address on every device.** A different address (for example `localhost`, or a test copy from `npm run dev`) is a separate app with its own presets.
+- **When it syncs:** when the app opens, a moment after you change a preset, and when you switch back to the app.
 - **Check it:** **Menu → Sync & settings** shows "Connected" or says why it is not syncing.
 - Photos and per-photo edits are never sent to the server.
 
 ## Development
 
+Needs Node.js 20 or newer.
+
 ```bash
 npm install
 npm run dev      # http://localhost:5173, also reachable from your phone on the same Wi-Fi
+npm run build    # production build into dist/
+npm start        # serves it with the preset sync server on http://localhost:8080
 ```
+
+Environment variables for the server: `DARKSHED_PORT` (default 8080), `DARKSHED_DATA` (default `./data`), `DARKSHED_TOKEN` (optional sync password).
 
 Plain JavaScript with no framework. Image processing is WebGL2 shaders; the server (`server/index.mjs`) is one Node file with no dependencies and only stores presets and LUTs.
 
