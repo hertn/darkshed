@@ -36,7 +36,7 @@ const send = (res, code, obj) => { res.writeHead(code, { 'content-type': 'applic
 async function api(req, res, url) {
   if (TOKEN && req.headers.authorization !== `Bearer ${TOKEN}`) return send(res, 401, { error: 'unauthorized' });
   const p = url.pathname;
-  if (p === '/api/ping') return send(res, 200, { ok: true, auth: !!TOKEN });
+  if (p === '/api/ping') return send(res, 200, { ok: true, app: 'darkshed', auth: !!TOKEN });
   if (p === '/api/presets') {
     if (req.method === 'GET') return send(res, 200, await readJson(PRESETS, {}));
     if (req.method === 'PUT') {
