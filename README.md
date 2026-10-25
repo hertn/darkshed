@@ -63,7 +63,7 @@ The Fujifilm-style looks are approximations built from the sliders, not Fujifilm
 
 <br>
 
-**1. Download the file for your computer** from the [Releases page](https://github.com/hertn/darkshed/releases/latest):
+**1. Download the file for your computer** from the [Releases page](https://github.com/hertn/darkshed/releases/latest). Scroll to **Assets** and pick the right one (ignore the "Source code" files):
 
 | Your computer | Download |
 |---|---|
@@ -75,17 +75,18 @@ The Fujifilm-style looks are approximations built from the sliders, not Fujifilm
 
 Not sure which Mac you have? Click the Apple menu, then **About This Mac**. It says "Chip: Apple M…" or "Processor: Intel".
 
-**2. Unzip it** and open **READ ME FIRST.txt** in the folder. It is short and covers everything below for your system.
+**2. Unzip it** (on Windows: right-click the zip, **Extract All**), move the `DarkShed` folder somewhere permanent such as Documents (not Downloads), and open **READ ME FIRST.txt** in it. It is short and walks you through your system.
 
-**3. Start it.** Double-click **Start DarkShed**. Your browser opens DarkShed, and the window shows the address to use on your phone or tablet (same Wi-Fi).
+**3. Start it.** Double-click **Start DarkShed**. A window with text opens (that is normal, leave it open) and your browser opens DarkShed. The window also shows the address to use on your phone or tablet (same Wi-Fi). Your computer may ask once to allow network connections: click **Allow**.
 
-The files are not code-signed, so Mac and Windows show a one-time warning the first time. The READ ME says how to get past it (on a Mac: right-click the file, choose **Open**).
+The files are not code-signed, so Mac and Windows show a one-time warning the first time. The READ ME has the exact steps for your system. On a recent Mac, you open **System Settings → Privacy & Security** and click **Open Anyway**.
 
 **Good to know**
 
 - Presets and LUTs are saved in the `data` folder next to the app. Every device that opens DarkShed from the same address shares them. Photos and settings stay on each device.
 - On your computer, open the network address that the window shows (it starts with `http://192.168…`), not `localhost`, so the computer and the phone share presets.
 - **Run in background** (optional) starts DarkShed by itself when you log in, with no window, so your phone can use it without an open window on your computer. The computer has to be awake. It can ask you for a sync password. **Stop running in background** undoes it.
+- **Update:** download the new version, copy your old `data` folder into it, then delete the old folder. If you use background mode, run **Stop running in background** in the old folder first and **Run in background** in the new one.
 - **Uninstall:** run **Stop running in background** if you used it, then delete the folder. Copy the `data` folder first if you want to keep your presets.
 
 </details>
