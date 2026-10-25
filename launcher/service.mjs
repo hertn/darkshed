@@ -97,8 +97,14 @@ if (cmd === 'install') {
   await new Promise((r) => setTimeout(r, 2500));
   let shown = false;
   const lan = Object.values(os.networkInterfaces()).flat().find((n) => n && n.family === 'IPv4' && !n.internal && /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))\./.test(n.address));
-  for (const port of [8080, ...Array.from({ length: 20 }, (_, i) => 8081 + i)]) {
-    try { const r = await fetch(`http://127.0.0.1:${port}/api/ping`, { signal: AbortSignal.timeout(800) }); if (r.status === 200 || r.status === 401) { console.log(`   http://${lan ? lan.address : 'localhost'}:${port}`); shown = true; break; } } catch { /* try the next */ }
+  for (let i = 0; i < 12 && !shown; i++) {                 // the background copy writes the port it really got
+    try {
+      const port = +fs.readFileSync(path.join(DATA, 'darkshed.port'), 'utf8');
+      let tok = ''; try { tok = JSON.parse(fs.readFileSync(path.join(DATA, 'launcher.json'), 'utf8')).token || ''; } catch { /* none */ }
+      const r = await fetch(`http://127.0.0.1:${port}/api/ping`, { signal: AbortSignal.timeout(800), headers: tok ? { authorization: `Bearer ${tok}` } : {} });
+      if ((await r.json()).app === 'darkshed') { console.log(`   http://${lan ? lan.address : 'localhost'}:${port}`); shown = true; }
+    } catch { /* not ready yet */ }
+    if (!shown) await new Promise((r) => setTimeout(r, 700));
   }
   if (!shown) console.log(`   (it did not answer yet; check ${path.join(DATA, 'darkshed.log')})`);
   console.log('\nTo undo this: run "Stop running in background". Then you can delete this folder.');
