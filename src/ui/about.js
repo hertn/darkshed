@@ -31,5 +31,5 @@ bus.on('open-about', () => {
     para(ABOUT.byline, 'font-size:12px;color:var(--mut);margin-top:10px');
     para(ABOUT.credits, 'font-size:12px;color:var(--mut)');
     para(ABOUT.disclaimer, 'font-size:12px;color:var(--mut)');
-  }, { buttons: [{ label: 'Close', primary: true, onClick: (m) => m.close() }] });
+  });
 });

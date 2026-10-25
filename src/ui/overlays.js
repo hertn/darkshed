@@ -41,7 +41,7 @@ export function menu(items, at) {
 }
 
 /** Simple modal. build(body) fills the content; returns { close, body, foot }. */
-export function modal(title, build, { buttons = [], closeX = false } = {}) {
+export function modal(title, build, { buttons = [], closeX = true } = {}) {
   const root = document.getElementById('modalRoot');
   const back = document.createElement('div'); back.className = 'modal-back';
   const m = document.createElement('div'); m.className = 'modal';

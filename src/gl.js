@@ -402,10 +402,11 @@ float hash(vec2 p) {
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
 }
-float vnoise(vec2 p) {
+float ghash(vec2 p) { return (hash(p) + hash(p + 17.1) + hash(p + 41.7) - 1.5) * 2.0; }   // roughly gaussian, sd 1
+float gnoise(vec2 p) {                                   // smooth gaussian noise, sd about 1: soft blobs about one cell wide
   vec2 i = floor(p), f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+  f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+  return 1.6 * mix(mix(ghash(i), ghash(i + vec2(1, 0)), f.x), mix(ghash(i + vec2(0, 1)), ghash(i + vec2(1, 1)), f.x), f.y);
 }
 
 vec2 suv;
@@ -540,12 +541,16 @@ void main() {
     p = uVigAmt < 0.0 ? p * (1.0 + uVigAmt * m * 0.95) : mix(p, vec3(1.0), uVigAmt * m * 0.8);
   }
 
-  // film grain: fixed to the image, strongest in mid-tones, fades when zoomed far out
+  // film grain: soft, clumpy and grey (not per-pixel colour noise), fixed to the image. Size is the clump width; roughness
+  // mixes in a coarser layer (uneven, blotchy) instead of a finer one (smooth, even). Shows most in the mid-tones and shadows.
   if (uGrain > 0.0) {
-    vec2 g = vUv * uOutFull / mix(1.0, 4.0, uGrainSize);
-    float n = mix(vnoise(g), hash(floor(g)), uGrainRough) - 0.5;
-    float w = 1.0 - pow(abs(luma(p) * 2.0 - 1.0), 2.0) * 0.7;
-    p += n * uGrain * uGrainFade * 0.5 * w;
+    vec2 g = vUv * uOutFull / mix(1.1, 4.5, uGrainSize);
+    float rg = uGrainRough;
+    float n = gnoise(g) + 0.9 * rg * gnoise(g * 0.43 + 11.7) + 0.55 * (1.0 - rg) * gnoise(g * 2.1 + 5.3);
+    n /= sqrt(1.0 + 0.81 * rg * rg + 0.3 * (1.0 - rg) * (1.0 - rg));
+    float l = clamp(luma(p), 0.0, 1.0);
+    float w = 0.3 + 0.7 * 4.0 * l * (1.0 - l);
+    p += n * uGrain * uGrainFade * 0.13 * w;
   }
 
   if (uOutSharp > 0.0) {                                                // output sharpening, sized for the exported pixels
