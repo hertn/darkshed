@@ -119,9 +119,9 @@ bus.on('grid', (on) => { $('btnGrid').classList.toggle('on', on); document.body.
 $('btnUndo').onclick = () => undo();
 $('btnRedo').onclick = () => redo();
 $('btnCompare').onclick = () => { app.split = app.split == null ? 0.5 : null; refreshTop(); invalidateAll(); };
+const setBefore = (v) => { if (app.bypass === v) return; app.bypass = v; $('btnBefore').classList.toggle('on', v); invalidateAll(); };
 {
-  const b = $('btnBefore');
-  const set = (v) => { app.bypass = v; b.classList.toggle('on', v); invalidateAll(); };
+  const b = $('btnBefore'), set = setBefore;
   b.addEventListener('pointerdown', () => set(true));
   for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => set(false));
 }
@@ -224,7 +224,7 @@ const shortcutList = () => [
     ['Fold the open panel away', ['the tool\'s key again']],
   ]],
   ['View', [
-    ['Zoom fit / 100%', ['Z']], ['Zoom in / out', ['+', '−']], ['Pan', ['Space', 'drag']], ['Before / after', ['\\']],
+    ['Zoom fit / 100%', ['Z']], ['Zoom in / out', ['+', '−']], ['Pan', ['Space', 'drag']], ['Before (hold)', ['\\']],
     ...(fsCan ? [['Full screen', ['F']]] : []),
   ]],
   ['Editing', [
@@ -305,6 +305,8 @@ $('btnMenu').onclick = () => menu([
 app.showHud = lsGet('hud', '0') === '1';
 
 // ---------- keyboard ----------
+addEventListener('keyup', (e) => { if (e.key === '\\') setBefore(false); });
+addEventListener('blur', () => setBefore(false));
 addEventListener('keydown', (e) => {
   const t = e.target;
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName) && t.type !== 'range' && t.type !== 'checkbox') return;
@@ -326,7 +328,7 @@ addEventListener('keydown', (e) => {
   else if (k === 'g' || k === 'G') grid.toggle();
   else if (k === 's' || k === 'S') toggleFilmstrip();
   else if ((k === 'f' || k === 'F') && fsCan) toggleFullscreen();
-  else if (k === '\\') { app.bypass = !app.bypass; $('btnBefore').classList.toggle('on', app.bypass); invalidateAll(); }
+  else if (k === '\\') setBefore(true);   // held: the key-up puts the edit back
   else if (k === 'z' || k === 'Z') zoomToggle();
   else if (k === '+' || k === '=') zoomAt(0, 0, 1.5);
   else if (k === '-') zoomAt(0, 0, 1 / 1.5);
