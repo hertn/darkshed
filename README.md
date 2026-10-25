@@ -7,7 +7,7 @@
 A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on Mac, iPad and iPhone. You host it yourself: on your own computer with a download you double-click, or on a home server with Docker.
 
 - **Private:** editing happens on your own device (decoding with LibRaw/WebAssembly, rendering on the GPU). Photos are never uploaded, not even to your server.
-- **Synced presets:** your presets and LUTs sync between all your devices through your own server.
+- **Synced presets:** your presets and LUTs sync between all your devices through your own copy of DarkShed, on your computer or a home server.
 - **Made for RAW:** Fujifilm RAF, DNG, CR2/3, NEF, ARW and more, plus JPEG, PNG and HEIC. Imports and exports Lightroom presets.
 
 *Why it exists:* Lightroom costs money, and the other vibe-coded "Lightroom killers" were desktop-only or tied to specific hardware. DarkShed is one web app that works on whatever you own.
@@ -60,7 +60,44 @@ The Fujifilm-style looks are approximations built from the sliders, not Fujifilm
 
 ## Install
 
-### With Docker (recommended)
+Pick the way that suits you. Each one is collapsed: click it to open the steps.
+
+<details>
+<summary><b>On your own computer (Mac, Windows or Linux): download and double-click</b>. The easiest way, nothing else to install</summary>
+
+<br>
+
+**1. Download the file for your computer** from the [Releases page](https://github.com/hertn/darkshed/releases/latest):
+
+| Your computer | Download |
+|---|---|
+| Mac with an Apple chip (M1, M2, M3, M4 and later) | `DarkShed-…-mac-apple-silicon.zip` |
+| Mac with an Intel chip | `DarkShed-…-mac-intel.zip` |
+| Windows (64-bit) | `DarkShed-…-windows.zip` |
+| Linux (Intel or AMD) | `DarkShed-…-linux-intel-amd.tar.gz` |
+| Linux (ARM, for example a Raspberry Pi) | `DarkShed-…-linux-arm.tar.gz` |
+
+Not sure which Mac you have? Click the Apple menu, then **About This Mac**. It says "Chip: Apple M…" or "Processor: Intel".
+
+**2. Unzip it** and open **READ ME FIRST.txt** in the folder. It is short and covers everything below for your system.
+
+**3. Start it.** Double-click **Start DarkShed**. Your browser opens DarkShed, and the window shows the address to use on your phone or tablet (same Wi-Fi).
+
+The files are not code-signed, so Mac and Windows show a one-time warning the first time. The READ ME says how to get past it (on a Mac: right-click the file, choose **Open**).
+
+**Good to know**
+
+- Presets and LUTs are saved in the `data` folder next to the app. Every device that opens DarkShed from the same address shares them. Photos and settings stay on each device.
+- **Run in background** (optional) starts DarkShed by itself when you log in, with no window, so your phone can use it without an open window on your computer. The computer has to be awake. It can ask you for a sync password. **Stop running in background** undoes it.
+- **Uninstall:** run **Stop running in background** if you used it, then delete the folder. Copy the `data` folder first if you want to keep your presets.
+- On your computer, open the network address that the window shows (it starts with `http://192.168…`), not `localhost`, so the computer and the phone share presets.
+
+</details>
+
+<details>
+<summary><b>On a home server: Docker</b></summary>
+
+<br>
 
 You need a machine with [Docker](https://docs.docker.com/engine/install/) and the Compose plugin.
 
@@ -94,17 +131,12 @@ That's it. Your presets are saved in the `data` folder next to the compose file.
 
 **Update by hand:** `docker compose pull && docker compose up -d`
 
-### Without Docker: download and double-click
+</details>
 
-No Docker, no Node.js, no terminal. Go to the [Releases page](https://github.com/hertn/darkshed/releases), download the file for your system (Mac: Apple chip `mac-arm64` or Intel `mac-x64`, Windows: `win-x64`, Linux: `linux-x64` or `linux-arm64`), unzip it and open **READ ME FIRST.txt**. It is short, and ships in every download.
+<details>
+<summary><b>From source</b> (for developers)</summary>
 
-- **Start DarkShed** opens it in your browser and shows the address to use on your phone (same Wi-Fi).
-- Presets and LUTs are saved in the `data` folder next to it and are shared by every device that opens DarkShed from the same address. Photos and settings stay on each device.
-- **Run in background** (optional) starts it by itself when you log in, with no window, so your phone can use it without an open window. **Stop running in background** undoes that. The computer has to be awake, and you can set an optional sync password.
-- To uninstall, stop the background mode if you used it, then delete the folder.
-- The files are not code-signed, so Mac and Windows show a one-time warning on first start (the READ ME explains how to get past it).
-
-### Without Docker: from source
+<br>
 
 Needs Node.js 20 or newer.
 
@@ -115,6 +147,8 @@ npm start        # http://localhost:8080
 ```
 
 Environment variables: `DARKSHED_PORT` (default 8080), `DARKSHED_DATA` (default `./data`), `DARKSHED_TOKEN` (optional sync password).
+
+</details>
 
 ## Use it on iPhone and iPad
 
@@ -130,7 +164,7 @@ Good to know:
 
 ## Syncing presets
 
-Sync is automatic when you open the app **from your own DarkShed server**, and optional: everything also works on a single device without it. There is nothing to set up. Leave **Server URL** empty, and enter a **Token** only if you started the server with `DARKSHED_TOKEN`.
+Sync is automatic when you open the app **from your own DarkShed** (the download running on your computer, or a Docker server), and optional: everything also works on a single device without it. There is nothing to set up. Leave **Server URL** empty, and enter a **Token** only if you set a sync password (`DARKSHED_TOKEN` with Docker, or the password asked by **Run in background**).
 
 - **Use the same address on every device.** Presets sync through the server you opened the app from. A test copy (for example `localhost:5173` from `npm run dev`) or a different address is a separate app with its own presets and does not sync.
 - **When it syncs:** when the app opens, a moment after you change a preset, and when you switch back to the app. A preset added on one device shows up on another the next time that device opens the app or comes back to it.
