@@ -43,6 +43,10 @@ export function slider(o) {
   const clamp = (v) => (snap ? snap(Math.min(max, Math.max(min, v))) : Math.min(max, Math.max(min, Math.round(v / step) * step)));
   rng.addEventListener('input', () => { value = clamp(+rng.value); paint(); o.onInput?.(value); });
   rng.addEventListener('change', () => o.onChange?.(value));
+  // show that the thumb is held (a finger covers it, so the label and value light up too)
+  const grabOn = () => el.classList.add('grab'), grabOff = () => el.classList.remove('grab');
+  rng.addEventListener('pointerdown', grabOn);
+  for (const t of ['pointerup', 'pointercancel', 'blur']) rng.addEventListener(t, grabOff);
   const reset = () => { value = def; paint(); o.onInput?.(value); o.onChange?.(value); };
   rng.addEventListener('dblclick', reset);
   lab.addEventListener('dblclick', reset);

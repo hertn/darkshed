@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.8
+- Export from the grid now exports the photos selected in the grid (it used to export the photo still open in the editor).
+- Phone: a Select button in the grid lets you tick several photos by tapping, for Export selected. Ticks show as a round checkmark; tapping a ticked photo unticks it.
+- Selected photos have a red border in the grid and the filmstrip (the open photo also gets a thin white inner line).
+- Phone: swipe left or right on a photo that fits the screen to go to the next or previous photo, with a slide animation (and a small nudge at the first and last photo).
+- The Reset button (back to how the photo looked on import) is now in the top bar next to Undo on every screen size, not only on phones.
+- Sliders: while you hold one, the thumb grows and the label and value turn red, so you can tell you grabbed it.
+
 ## 0.9.7
 - Fixed saving a preset not keeping all settings: exposure, white balance (Temp, Tint), sharpening, noise reduction and the Optics settings are now saved too. Presets saved before this are missing them: save them again to include them.
 
