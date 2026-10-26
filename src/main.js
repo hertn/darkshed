@@ -115,6 +115,22 @@ $('btnReset').onclick = () => { const it = curItem(); if (it && isEdited(it)) { 
 const refreshReset = () => { const it = curItem(); $('btnReset').disabled = !it || !isEdited(it); };
 bus.on('history', refreshReset); bus.on('select', refreshReset); bus.on('badges', refreshReset);
 $('btnGrid').onclick = () => grid.toggle();
+// phone swipe: the photo slides away, the next one slides in from the other side (a short nudge at the first / last photo)
+let swiping = false;
+bus.on('swipe', async (d) => {
+  if (grid.visible() || swiping) return;
+  const els = [$('cv'), $('ov')], run = (frames, ms, easing) => Promise.all(els.map((e) => e.animate(frames, { duration: ms, easing, fill: 'forwards' }).finished.catch(() => {})));
+  const reset = () => els.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
+  swiping = true;
+  try {
+    const i = visibleItems().indexOf(curItem()), n = visibleItems().length;
+    if (i + d < 0 || i + d >= n) { await run([{ transform: 'none' }, { transform: `translateX(${-d * 28}px)`, offset: 0.4 }, { transform: 'none' }], 260, 'ease-out'); return; }
+    await run([{ transform: 'none', opacity: 1 }, { transform: `translateX(${-d * 22}%)`, opacity: 0 }], 150, 'ease-in');
+    await lib.step(d);
+    reset();
+    await run([{ transform: `translateX(${d * 22}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 200, 'ease-out');
+  } finally { reset(); swiping = false; }
+});
 bus.on('grid', (on) => { $('btnGrid').classList.toggle('on', on); document.body.classList.toggle('grid-on', on); });
 $('btnUndo').onclick = () => undo();
 $('btnRedo').onclick = () => redo();

@@ -202,10 +202,12 @@ export function openExportDialog() {
     const delP = document.createElement('button'); delP.className = 'ib'; delP.title = 'Delete the selected preset'; delP.textContent = '×'; delP.style.fontSize = '18px';
     presetRow.append(saveP, delP);
 
-    const scopeOpts = [['cur', `This photo (${cur.name})`]];
-    if (nSel > 1) scopeOpts.push(['sel', `Selected photos (${nSel})`]);
+    // opened from the grid: the photos selected there are the ones to export, not the photo the editor still has open
+    const inGrid = document.body.classList.contains('grid-on');
+    const scopeOpts = inGrid ? [['sel', nSel > 1 ? `Selected photos (${nSel})` : `This photo (${selected[0].name})`]] : [['cur', `This photo (${cur.name})`]];
+    if (!inGrid && nSel > 1) scopeOpts.push(['sel', `Selected photos (${nSel})`]);
     if (nAll > 1) scopeOpts.push(['all', `All photos (${nAll})`]);
-    const scope = sel(scopeOpts, scopeOpts.some(([v]) => v === P.scope) ? P.scope : 'cur');
+    const scope = sel(scopeOpts, inGrid ? (P.scope === 'all' && nAll > 1 ? 'all' : 'sel') : scopeOpts.some(([v]) => v === P.scope) ? P.scope : 'cur');
     row('Export', scope);
     const fmts = [['image/jpeg', 'JPEG'], ['image/png', 'PNG (lossless)'], ['image/webp', 'WebP']];
     if (!IOS) { const probe = new Renderer(document.createElement('canvas')); if (probe.floatTargets) fmts.push(['image/tiff', 'TIFF (16-bit)']); probe.dispose(); }

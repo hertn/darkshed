@@ -15,6 +15,7 @@ export function createGrid(host) {
       <label class="gl">Rating ≥ <select data-k="minRating"><option value="0">any</option><option value="1">★</option><option value="2">★★</option><option value="3">★★★</option><option value="4">★★★★</option><option value="5">★★★★★</option></select></label>
       <label class="gl">Sort <select data-k="sort"><option value="added">Added</option><option value="name">Name</option><option value="date">Date</option><option value="rating">Rating</option></select></label>
       <span class="grow"></span>
+      <button class="btn selbtn">Select</button>
       <span class="gcount"></span>
       <input type="range" class="lr gsize" min="110" max="320" step="1" title="Thumbnail size">
     </div>
@@ -23,6 +24,10 @@ export function createGrid(host) {
   const cells = root.querySelector('.cells'), count = root.querySelector('.gcount'), size = root.querySelector('.gsize');
   let down = null, lastTap = { id: null, t: 0 }, lastTouchEnd = 0;      // touch double-tap detection (the cells are rebuilt on every tap, so this lives here)
   let cursor = null;       // item id the keyboard cursor sits on
+  let selecting = false;   // phone: taps tick photos on and off instead of selecting one (for Export selected)
+  const selBtn = root.querySelector('.selbtn');
+  const paintSel = () => { root.classList.toggle('selecting', selecting); selBtn.classList.toggle('on', selecting); selBtn.textContent = selecting ? `Done${app.sel.size ? ' · ' + app.sel.size : ''}` : 'Select'; };
+  selBtn.onclick = () => { selecting = !selecting; render(); };
   let anchor = null;
 
   // phones start with two columns (about 150 px tiles) instead of one huge one; the size is remembered per kind of screen
@@ -41,7 +46,7 @@ export function createGrid(host) {
   };
 
   function render() {
-    paintBar();
+    paintBar(); paintSel();
     cells.textContent = '';
     const vis = visibleItems(true);
     count.textContent = vis.length === app.items.length ? `${vis.length} photos` : `${vis.length} of ${app.items.length}`;
@@ -74,7 +79,7 @@ export function createGrid(host) {
       c.addEventListener('pointerup', (e) => {
         if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10 || performance.now() - down.t > 350) { down = null; return; }
         const now = performance.now(); down = null;
-        if (lastTap.id === it.id && now - lastTap.t < 500) { lastTap = { id: null, t: 0 }; open(it); } else lastTap = { id: it.id, t: now };
+        if (!selecting && lastTap.id === it.id && now - lastTap.t < 500) { lastTap = { id: null, t: 0 }; open(it); } else lastTap = { id: it.id, t: now };
       });
       c.addEventListener('touchend', (e) => { const n = performance.now(); if (n - lastTouchEnd < 400) e.preventDefault(); lastTouchEnd = n; }, { passive: false });      // belt and braces against iOS double-tap zoom
       const more = document.createElement('button'); more.className = 'more'; more.textContent = '⋯'; more.title = 'More…';
@@ -107,7 +112,7 @@ export function createGrid(host) {
     if (e.button === 2) return;
     startX = e.clientX; startY = e.clientY;
     const vis = visibleItems(true), i = vis.indexOf(it);
-    if (e.metaKey || e.ctrlKey) { app.sel.has(it.id) ? app.sel.delete(it.id) : app.sel.add(it.id); anchor = it.id; }
+    if (selecting || e.metaKey || e.ctrlKey) { app.sel.has(it.id) ? app.sel.delete(it.id) : app.sel.add(it.id); anchor = it.id; }
     else if (e.shiftKey && anchor != null) {
       const a = vis.findIndex((x) => x.id === anchor); const [lo, hi] = [Math.min(a, i), Math.max(a, i)];
       app.sel = new Set(vis.slice(lo, hi + 1).map((x) => x.id));
@@ -125,7 +130,7 @@ export function createGrid(host) {
     cells.querySelector('.cell.cur')?.scrollIntoView({ block: 'nearest' });
     bus.emit('grid', true);
   }
-  function hide() { root.hidden = true; host.classList.remove('gridding'); bus.emit('grid', false); }
+  function hide() { selecting = false; root.hidden = true; host.classList.remove('gridding'); bus.emit('grid', false); }
   const visible = () => !root.hidden;
 
   /** Keyboard while the grid is open. Returns true if the key was used. */
