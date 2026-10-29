@@ -336,7 +336,11 @@ $('btnMenu').onclick = () => menu([
   { label: 'Copy settings', kb: 'Ctrl+Shift+C', onClick: copySettings },
   { label: 'Paste settings', kb: 'Ctrl+Shift+V', onClick: pasteSettings },
   { label: 'Reset all edits', onClick: resetAll },
-  { label: 'Remove photo from library…', onClick: () => { const it = curItem(); if (!it) return; app.sel = new Set([it.id]); lib.confirmRemoveSelected(); } },
+  (() => {                                             // in the grid, the menu acts on the whole selection
+    const n = grid.visible() ? app.sel.size : 0;
+    if (n) return { label: n > 1 ? `Remove ${n} photos from library…` : 'Remove photo from library…', onClick: () => lib.confirmRemoveSelected() };
+    return { label: 'Remove photo from library…', onClick: () => { const it = curItem(); if (!it) return; app.sel = new Set([it.id]); lib.confirmRemoveSelected(); } };
+  })(),
   'sep',
   ...(document.body.classList.contains('m') ? [] : [{ label: 'Solo mode (one section open)', check: isSolo(), onClick: () => setSolo(!isSolo()) }]),
   { label: 'Show filmstrip', check: !$('strip').classList.contains('hidden'), onClick: () => $('btnFilm').click() },

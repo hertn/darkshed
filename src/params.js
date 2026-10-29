@@ -126,7 +126,7 @@ export const MASK_DETAIL = [['texture', 'Texture', -100, 100, 1], ['clarity', 'C
 export const defaultDetail = () => Object.fromEntries(MASK_DETAIL.map(([k]) => [k, 0]));
 
 let seq = 1;
-const uid = (p) => p + Date.now().toString(36) + (seq++);
+export const uid = (p) => p + Date.now().toString(36) + (seq++);
 /**
  * A mask is a list of components combined with add / subtract / intersect, plus the adjustments it applies.
  * Component geometry lives in "height units": the source image is aspect x 1 (height = 1), origin top-left.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.11
+- Masks: a Duplicate button (next to Delete mask) copies the selected mask with all its shapes, brush strokes and adjustments. The copy is placed right below the original and selected, ready to change.
+- Remove from the menu in the grid now removes every selected photo (it used to remove only the photo open in the editor).
+- Healing on dark backgrounds: a healed spot no longer comes out grey (which then showed the grain as white speckles). The colour match around the spot now ignores bright bits at its edge, such as part of what you are removing, instead of averaging them in.
+
 ## 0.9.10
 - Phone: swiping between photos now follows your finger. Let go past a third of the screen, or with a quick flick, and the photo springs away and the next one springs in; let go earlier and it springs back. At the first and last photo it stretches with Apple's rubber-band curve. The springs keep the speed of your finger, like iOS.
 - Phone: double-tapping a slider to reset it now sticks. iPhone Safari sometimes sent a late update from the tap that set the slider back to another value (for example when you pressed Done right after).

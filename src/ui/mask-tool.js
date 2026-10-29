@@ -1,7 +1,7 @@
 // Masking tool. A mask = components (linear / radial / brush / luminance range / colour range) combined with
 // add / subtract / intersect, plus local adjustments and local detail.
 import { app, curItem, changed, commit, bus } from '../app.js';
-import { MASK_ADJ, MASK_DETAIL, MAX_MASKS, MAX_BRUSH_MASKS, MAX_COMPS, newMask, newComp } from '../params.js';
+import { MASK_ADJ, MASK_DETAIL, MAX_MASKS, MAX_BRUSH_MASKS, MAX_COMPS, newMask, newComp, uid } from '../params.js';
 import { slider } from './slider.js';
 import { icon } from './icons.js';
 import { redrawOverlay } from '../viewport.js';
@@ -143,7 +143,9 @@ export function createMaskPanel() {
   const delRow = document.createElement('div'); delRow.className = 'btn-row';
   const delBtn = document.createElement('button'); delBtn.className = 'btn small danger ghost'; delBtn.innerHTML = icon('trash', 15) + 'Delete mask';
   delBtn.onclick = () => deleteMask();
-  delRow.append(delBtn);
+  const dupBtn = document.createElement('button'); dupBtn.className = 'btn small ghost'; dupBtn.innerHTML = icon('copy', 15) + 'Duplicate';
+  dupBtn.onclick = () => duplicateMask();
+  delRow.append(dupBtn, delBtn);
   opts.append(compTitle, compList, addRow, compBox, adjTitle, adjBox, detTitle, detBox, delRow);
 
   // ================= state -> UI =================
@@ -249,6 +251,16 @@ export function createMaskPanel() {
     sync(); changed({ edit: true }); commit(`Add ${NAMES[spec.type].toLowerCase()}`);
     if (spec.type === 'brush') toast('Paint on the photo');
     return c;
+  }
+  function duplicateMask() {
+    const it = curItem(), m = maskOf(); if (!it || !m) return;
+    if (it.masks.length >= MAX_MASKS) { toast(`Up to ${MAX_MASKS} masks per photo`); return; }
+    const brushes = m.comps.filter((c) => c.type === 'brush').length;
+    if (brushes && brushCount(it) + brushes > MAX_BRUSH_MASKS) { toast(`Up to ${MAX_BRUSH_MASKS} brushes per photo`); return; }
+    const d = structuredClone(m); d.id = uid('m'); d.name = `${maskLabel(m)} copy`;
+    for (const c of d.comps) { c.id = uid('c'); c.rev = 0; }
+    it.masks.splice(it.masks.indexOf(m) + 1, 0, d); it.selectedMask = d.id; it.selectedComp = d.comps[0].id;
+    sync(); changed({ edit: true, brush: brushes > 0 }); commit('Duplicate mask');
   }
   function deleteMask() {
     const it = curItem(), m = maskOf(); if (!it || !m) return;

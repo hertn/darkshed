@@ -22,6 +22,7 @@ export const accessRgba8 = (a, w) => ({
   set(x, y, c) { const i = (y * w + x) * 4; a[i] = l2s(c[0]); a[i + 1] = l2s(c[1]); a[i + 2] = l2s(c[2]); },
 });
 
+const median = (v) => { v.sort((p, q) => p - q); const m = v.length >> 1; return v.length & 1 ? v[m] : (v[m - 1] + v[m]) / 2; };
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a || 1e-6))); return t * t * (3 - 2 * t); };
 
 function makeSampler(w, h, acc) {
@@ -103,7 +104,7 @@ function patchStroke(w, h, acc, sp) {
   const ox = sp.off[0] * h, oy = sp.off[1] * h, sample = makeSampler(w, h, acc), t1 = [0, 0, 0], s1 = [0, 0, 0];
   const delta = [0, 0, 0];
   if (sp.mode === 'heal') {
-    let n = 0;
+    const diffs = [[], [], []];
     for (let k = 0; k < dabs.length; k += Math.max(1, Math.floor(dabs.length / 24))) for (let a = 0; a < 10; a++) {
       const t = (a / 10) * Math.PI * 2, px = dabs[k][0] + Math.cos(t) * r * 1.3, py = dabs[k][1] + Math.sin(t) * r * 1.3;
       if (px < 0 || py < 0 || px >= w || py >= h) continue;
@@ -111,10 +112,9 @@ function patchStroke(w, h, acc, sp) {
       if (ix >= 0 && iy >= 0 && ix < bw && iy < bh && cov[iy * bw + ix] > 0.05) continue;       // inside the painted area
       if (px + ox < 0 || py + oy < 0 || px + ox >= w || py + oy >= h) continue;
       sample(px, py, t1); sample(px + ox, py + oy, s1);
-      for (let c = 0; c < 3; c++) delta[c] += t1[c] - s1[c];
-      n++;
+      for (let c = 0; c < 3; c++) diffs[c].push(t1[c] - s1[c]);
     }
-    if (n) for (let c = 0; c < 3; c++) delta[c] /= n; else delta.fill(0);
+    if (diffs[0].length) for (let c = 0; c < 3; c++) delta[c] = median(diffs[c]);                 // median: see patchImage
   }
   const out = [], cur = [0, 0, 0], src = [0, 0, 0];
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
@@ -136,18 +136,16 @@ export function patchImage(w, h, acc, spots) {
     const r = Math.max(1, sp.r * h), cx = sp.x * h, cy = sp.y * h, dx = (sp.sx - sp.x) * h, dy = (sp.sy - sp.y) * h;
     const delta = [0, 0, 0];
     if (sp.mode === 'heal') {
-      // colour difference between the rings around the target and the source, so the patch blends in
-      const ring = (ox, oy) => {
-        const m = [0, 0, 0]; let n = 0;
-        for (let k = 0; k < 40; k++) for (const rr of [1.1, 1.3]) {
-          const a = (k / 40) * Math.PI * 2, x = Math.round(ox + Math.cos(a) * r * rr), y = Math.round(oy + Math.sin(a) * r * rr);
-          if (x < 0 || y < 0 || x >= w || y >= h) continue;
-          acc.get(x, y, tmp); m[0] += tmp[0]; m[1] += tmp[1]; m[2] += tmp[2]; n++;
-        }
-        return n ? m.map((v) => v / n) : null;
-      };
-      const a = ring(cx, cy), b = ring(cx + dx, cy + dy);
-      if (a && b) for (let c = 0; c < 3; c++) delta[c] = a[c] - b[c];
+      // colour difference between matching points on rings around the target and the source, so the patch blends in.
+      // The median ignores a few bright points on the ring (an edge of what is being removed), which would lift the patch.
+      const diffs = [[], [], []], a = [0, 0, 0], b = [0, 0, 0];
+      for (let k = 0; k < 40; k++) for (const rr of [1.2, 1.45]) {
+        const t = (k / 40) * Math.PI * 2, x = Math.round(cx + Math.cos(t) * r * rr), y = Math.round(cy + Math.sin(t) * r * rr);
+        if (x < 0 || y < 0 || x >= w || y >= h || x + dx < 0 || y + dy < 0 || x + dx >= w || y + dy >= h) continue;
+        acc.get(x, y, a); acc.get(Math.round(x + dx), Math.round(y + dy), b);
+        for (let c = 0; c < 3; c++) diffs[c].push(a[c] - b[c]);
+      }
+      if (diffs[0].length) for (let c = 0; c < 3; c++) delta[c] = median(diffs[c]);
     }
     const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(w - 1, Math.ceil(cx + r));
     const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(h - 1, Math.ceil(cy + r));
