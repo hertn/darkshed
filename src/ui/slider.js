@@ -41,13 +41,19 @@ export function slider(o) {
   }
   let snap = null;                                  // optional: snaps a value to what the display units allow (Kelvin in 50s)
   const clamp = (v) => (snap ? snap(Math.min(max, Math.max(min, v))) : Math.min(max, Math.max(min, Math.round(v / step) * step)));
-  rng.addEventListener('input', () => { value = clamp(+rng.value); paint(); o.onInput?.(value); });
-  rng.addEventListener('change', () => o.onChange?.(value));
+  // After a double-tap reset, iPhone Safari can still send input / change for the touch that just ended, with the value
+  // where the finger was; that used to overwrite the reset. Ignore the range's own events until the next touch starts.
+  let resetHold = false;
+  rng.addEventListener('input', () => {
+    if (resetHold) { rng.value = value; return; }
+    value = clamp(+rng.value); paint(); o.onInput?.(value);
+  });
+  rng.addEventListener('change', () => { if (resetHold) rng.value = value; o.onChange?.(value); });
   // show that the thumb is held (a finger covers it, so the label and value light up too)
   const grabOn = () => el.classList.add('grab'), grabOff = () => el.classList.remove('grab');
-  rng.addEventListener('pointerdown', grabOn);
+  rng.addEventListener('pointerdown', () => { resetHold = false; grabOn(); });
   for (const t of ['pointerup', 'pointercancel', 'blur']) rng.addEventListener(t, grabOff);
-  const reset = () => { value = def; paint(); o.onInput?.(value); o.onChange?.(value); };
+  const reset = () => { resetHold = true; value = def; paint(); o.onInput?.(value); o.onChange?.(value); };
   rng.addEventListener('dblclick', reset);
   lab.addEventListener('dblclick', reset);
   // touch screens do not reliably send dblclick: detect a quick second tap ourselves (on the track or the label)
