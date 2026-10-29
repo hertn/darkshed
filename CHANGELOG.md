@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.10
+- Phone: swiping between photos now follows your finger. Let go past a third of the screen, or with a quick flick, and the photo springs away and the next one springs in; let go earlier and it springs back. At the first and last photo it stretches with Apple's rubber-band curve. The springs keep the speed of your finger, like iOS.
+
 ## 0.9.9
 - New look: an Apple-style design pass over the whole interface (styles only, no change to editing, RAW or sync).
 - Controls react the instant you press them and ease back smoothly; slider knobs grow under your finger. Tiles, presets, the dock and the tool rail get the same press feedback.

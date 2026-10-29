@@ -115,23 +115,52 @@ $('btnReset').onclick = () => { const it = curItem(); if (it && isEdited(it)) { 
 const refreshReset = () => { const it = curItem(); $('btnReset').disabled = !it || !isEdited(it); };
 bus.on('history', refreshReset); bus.on('select', refreshReset); bus.on('badges', refreshReset);
 $('btnGrid').onclick = () => grid.toggle();
-// phone swipe: the photo slides away, the next one slides in from the other side (a short nudge at the first / last photo)
-let swiping = false;
-bus.on('swipe', async (d) => {
-  if (grid.visible() || swiping) return;
-  const els = [$('cv'), $('ov')], run = (frames, ms, easing) => Promise.all(els.map((e) => e.animate(frames, { duration: ms, easing, fill: 'forwards' }).finished.catch(() => {})));
-  const reset = () => els.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
-  swiping = true;
-  try {
-    const i = visibleItems().indexOf(curItem()), n = visibleItems().length;
-    if (i + d < 0 || i + d >= n) { await run([{ transform: 'none' }, { transform: `translateX(${-d * 28}px)`, offset: 0.4 }, { transform: 'none' }], 260, 'ease-out'); return; }
-    await run([{ transform: 'none', opacity: 1 }, { transform: `translateX(${-d * 22}%)`, opacity: 0 }], 150, 'ease-in');
-    await lib.step(d);
-    reset();
-    await run([{ transform: `translateX(${d * 22}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 200, 'ease-out');
-  } finally { reset(); swiping = false; }
-});
 bus.on('grid', (on) => { $('btnGrid').classList.toggle('on', on); document.body.classList.toggle('grid-on', on); });
+// phone swipe: the photo follows the finger; letting go past a third of the screen (or with a flick) springs it away and the next one springs in.
+// At the first / last photo it stretches with Apple's rubber-band curve and springs back. Springs keep the finger's speed, like iOS.
+{
+  const els = [$('cv'), $('ov')];
+  const setX = (x, o = 1) => els.forEach((e) => { e.style.transform = x ? `translateX(${x}px)` : ''; e.style.opacity = o < 1 ? o : ''; });
+  const rubber = (x, d) => Math.sign(x) * (1 - 1 / ((0.55 * Math.abs(x)) / d + 1)) * d;      // UIScrollView's resistance past the end
+  let x = 0, v = 0, raf = 0, busy = false;
+  /** damped spring from x to 0 (or to `to`), starting with velocity v0 (px/ms); about 0.35 s */
+  const spring = (from, to, v0, update) => new Promise((done) => {
+    const w = (2 * Math.PI) / 0.35, k = w * w, c = 2 * 0.9 * w;
+    let p = from, vel = v0 * 1000, t0 = performance.now();
+    cancelAnimationFrame(raf);
+    const tick = (now) => {
+      let dt = Math.min(0.032, (now - t0) / 1000); t0 = now;
+      for (let n = 0; n < 4; n++) { vel += (-k * (p - to) - c * vel) * (dt / 4); p += vel * (dt / 4); }
+      if (Math.abs(p - to) < 0.4 && Math.abs(vel) < 8) { update(to); done(); return; }
+      update(p); raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  });
+  const nb = (d) => { const vis = visibleItems(), i = vis.indexOf(curItem()); return i + d >= 0 && i + d < vis.length; };
+  const width = () => $('cv').clientWidth || innerWidth;
+  bus.on('swipe-move', (dx) => {
+    if (grid.visible() || busy) return;
+    cancelAnimationFrame(raf);
+    const d = dx < 0 ? 1 : -1;
+    x = nb(d) ? dx : rubber(dx, width());
+    setX(x, 1 - Math.min(0.5, Math.abs(x) / width() * 0.6));
+  });
+  bus.on('swipe-end', async ({ dx, v: vx }) => {
+    if (grid.visible() || busy) return;
+    busy = true;
+    try {
+      const W = width(), d = dx < 0 ? 1 : -1;
+      const flick = Math.abs(vx) > 0.5 && Math.sign(vx) === Math.sign(dx || vx);
+      if (nb(d) && (Math.abs(dx) > W / 3 || flick)) {
+        const dir = Math.sign(dx || vx);
+        await spring(x, dir * W, vx, (p) => { x = p; setX(p, Math.max(0, 1 - Math.abs(p) / W)); });     // out
+        await lib.step(dir < 0 ? 1 : -1);
+        x = -dir * W * 0.35; setX(x, 0.4);
+        await spring(x, 0, 0, (p) => { x = p; setX(p, 1 - Math.min(0.6, Math.abs(p) / (W * 0.35)) * 0.6); });   // in
+      } else await spring(x, 0, vx, (p) => { x = p; setX(p, 1 - Math.min(0.5, Math.abs(p) / W * 0.6)); });  // back
+    } finally { setX(0); x = 0; busy = false; }
+  });
+}
 $('btnUndo').onclick = () => undo();
 $('btnRedo').onclick = () => redo();
 $('btnCompare').onclick = () => { app.split = app.split == null ? 0.5 : null; refreshTop(); invalidateAll(); };
