@@ -101,6 +101,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: downloads
@@ -109,4 +110,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release create "$GITHUB_REF_NAME" dl/* --title "DarkShed $GITHUB_REF_NAME" --generate-notes
+        run: |
+          # release notes = this version's section of CHANGELOG.md; fall back to GitHub's generated notes if there is none
+          awk -v v="${GITHUB_REF_NAME#v}" '/^## /{p=($2==v);next} p' CHANGELOG.md > notes.md
+          if grep -q '[^[:space:]]' notes.md; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" dl/* --title "DarkShed $GITHUB_REF_NAME" "${notes[@]}"
