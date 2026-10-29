@@ -32,6 +32,8 @@ export function menu(items, at) {
   if (x + mw > innerWidth - 8) x = Math.max(8, (at instanceof Element ? r.right : x) - mw);
   if (y + mh > innerHeight - 8) y = Math.max(8, (at instanceof Element ? r.top - mh - 4 : innerHeight - mh - 8));
   m.style.left = x + 'px'; m.style.top = y + 'px';
+  const ax = at instanceof Element ? (r.left + r.right) / 2 : r.left;
+  m.style.transformOrigin = Math.max(0, Math.min(mw, ax - x)) + 'px ' + (y < r.top ? mh : 0) + 'px';      // grows out of the button it belongs to
   openAnchor = at instanceof Element ? at : null;
   const off = (e) => { if (!m.contains(e.target)) { if (at instanceof Element && at.contains(e.target)) return; closeMenu?.(); } };   // the button itself toggles on click
   const key = (e) => { if (e.key === 'Escape') closeMenu?.(); };

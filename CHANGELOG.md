@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.9
+- New look: an Apple-style design pass over the whole interface (styles only, no change to editing, RAW or sync).
+- Controls react the instant you press them and ease back smoothly; slider knobs grow under your finger. Tiles, presets, the dock and the tool rail get the same press feedback.
+- Menus, dialogs, the toast, the floating toolbar and the panel header are now translucent glass. Menus grow out of the button that opened them, and dialogs blur and dim the app behind them. The area around the photo stays solid black.
+- Cleaner type and separators: system font with tighter spacing, hairline lines instead of black rules, sentence-case group titles, segmented tabs with a lifted thumb.
+- A new empty screen, and clearer red selection outlines on thumbnails.
+- Respects the system settings for reduced motion, reduced transparency and increased contrast. Keyboard focus is now clearly visible.
+
 ## 0.9.8
 - Export from the grid now exports the photos selected in the grid (it used to export the photo still open in the editor).
 - Phone: a Select button in the grid lets you tick several photos by tapping, for Export selected. Ticks show as a round checkmark; tapping a ticked photo unticks it.
