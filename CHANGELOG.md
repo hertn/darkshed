@@ -2,6 +2,7 @@
 
 ## 0.9.10
 - Phone: swiping between photos now follows your finger. Let go past a third of the screen, or with a quick flick, and the photo springs away and the next one springs in; let go earlier and it springs back. At the first and last photo it stretches with Apple's rubber-band curve. The springs keep the speed of your finger, like iOS.
+- Phone: double-tapping a slider to reset it now sticks. iPhone Safari sometimes sent a late update from the tap that set the slider back to another value (for example when you pressed Done right after).
 
 ## 0.9.9
 - New look: an Apple-style design pass over the whole interface (styles only, no change to editing, RAW or sync).
