@@ -194,7 +194,7 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
   // touch: press and hold the photo to see the original, release to go back to the edited version
   let holdTimer = 0, holdOn = false, holdX = 0, holdY = 0;
   let tapC = null;          // a touch / click that could still turn out to be a tap
-  let swipe = null;         // phone: a one-finger drag on a photo that fits the screen goes to the next / previous photo
+  let swipe = null;         // phone: a one-finger drag on a photo that fits the screen follows the finger, then goes to the next / previous photo (src/main.js)
   const holdEnd = () => { clearTimeout(holdTimer); holdTimer = 0; if (holdOn) { holdOn = false; app.bypass = false; $('view').classList.remove('holding'); invalidateAll(); } };
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   addEventListener('keydown', (e) => { if (e.code === 'Space' && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName)) { spaceDown = true; } });
@@ -222,7 +222,9 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
     ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     try { canvas.setPointerCapture(e.pointerId); } catch {}
     if (ptrs.size === 2) {
-      holdEnd(); tapC = null; swipe = null;
+      holdEnd(); tapC = null;
+      if (swipe?.active) bus.emit('swipe-end', { dx: 0, v: 0 });
+      swipe = null;
       if (toolDrag) { tool?.pointerCancel?.(); toolDrag = false; }
       const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); return;
     }
@@ -230,7 +232,7 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
     if (app.split != null && Math.abs(x - app.split * canvas.clientWidth) < 16) { splitDrag = true; return; }
     if (!spaceDown && tool?.pointerDown?.(e, x, y, view)) { toolDrag = true; return; }
     if (ptrs.size === 1) tapC = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), moved: false };
-    if (ptrs.size === 1) swipe = e.pointerType === 'touch' && renderer.view.zoom <= 1.01 ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null; else swipe = null;
+    if (ptrs.size === 1) swipe = e.pointerType === 'touch' && renderer.view.zoom <= 1.01 ? { id: e.pointerId, x: e.clientX, y: e.clientY, active: false, pts: [[performance.now(), e.clientX]] } : null; else swipe = null;
     if (e.pointerType !== 'mouse' && ptrs.size === 1) {
       holdX = e.clientX; holdY = e.clientY;
       holdTimer = setTimeout(() => { holdTimer = 0; holdOn = true; app.bypass = true; $('view').classList.add('holding'); try { navigator.vibrate?.(8); } catch {} invalidateAll(); }, 380);
@@ -248,6 +250,14 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
     ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     if (tapC && tapC.id === e.pointerId && Math.hypot(e.clientX - tapC.x, e.clientY - tapC.y) > 8) tapC.moved = true;
     if (holdOn) return;                                          // holding: no panning
+    if (swipe && swipe.id === e.pointerId && !toolDrag && !splitDrag && ptrs.size === 1 && app.tool === 'edit') {
+      const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+      if (!swipe.active && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) { swipe.active = true; clearTimeout(holdTimer); holdTimer = 0; tapC = null; }
+      if (swipe.active) {
+        swipe.pts.push([performance.now(), e.clientX]); if (swipe.pts.length > 6) swipe.pts.shift();
+        bus.emit('swipe-move', dx); return;
+      }
+    }
     if (holdTimer && Math.hypot(e.clientX - holdX, e.clientY - holdY) > 10) { clearTimeout(holdTimer); holdTimer = 0; }
     if (splitDrag) { app.split = Math.min(0.98, Math.max(0.02, x / canvas.clientWidth)); dirty = true; overlayDirty = true; return; }
     if (toolDrag) { tool.pointerMove?.(e, x, y, view); return; }
@@ -269,9 +279,9 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
     const [x, y] = view.cssToLocal(e);
     if (tapC && tapC.id === e.pointerId && !tapC.moved && !wasHold && !toolDrag && !splitDrag && ptrs.size === 1 && performance.now() - tapC.t < 450) tool?.tap?.(e, x, y, view);
     if (tapC && tapC.id === e.pointerId) tapC = null;
-    if (swipe && swipe.id === e.pointerId && e.type === 'pointerup' && !wasHold && !toolDrag && !splitDrag && ptrs.size === 1 && app.tool === 'edit') {
-      const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
-      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.8 && performance.now() - swipe.t < 700) { bus.emit('swipe', dx < 0 ? 1 : -1); }
+    if (swipe?.active && swipe.id === e.pointerId) {
+      const [t0, x0] = swipe.pts[0], [t1, x1] = swipe.pts[swipe.pts.length - 1];
+      bus.emit('swipe-end', { dx: e.type === 'pointerup' ? e.clientX - swipe.x : 0, v: t1 > t0 ? (x1 - x0) / (t1 - t0) : 0 });      // v in px per ms
     }
     if (swipe && swipe.id === e.pointerId) swipe = null;
     if (toolDrag && ptrs.size === 1) { tool.pointerUp?.(e, x, y, view); toolDrag = false; }
