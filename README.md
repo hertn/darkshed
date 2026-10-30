@@ -177,6 +177,10 @@ Forks, bug reports and pull requests are welcome. DarkShed is a hobby project ma
 - **Found a bug or have an idea?** Open an [issue](https://github.com/hertn/darkshed/issues). A short description and your device (for example "iPhone 16 Pro, iOS 26") helps a lot.
 - **Want to change the code?** Fork the repo, make your change, and open a pull request. `CLAUDE.md` has notes on how the project is laid out and how it is tested.
 
+## Support
+
+DarkShed is free, with no ads or subscriptions. If you enjoy it, you can [buy me a coffee on Ko-fi](https://ko-fi.com/hertn).
+
 ## License and credits
 
 Directed by [Hert Niks](https://github.com/hertn). Built by [Claude](https://claude.com/claude-code) (Anthropic).

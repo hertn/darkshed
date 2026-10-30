@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.13
+- About now has a "Support on Ko-fi" link next to GitHub, for anyone who wants to leave a tip. DarkShed stays free.
+
 ## 0.9.12
 - Reset (the button and "Reset all edits") now also takes the applied preset off: its tile is no longer outlined, so one click applies it again (it used to take two).
 - Delete or Backspace in the editor removes the open photo (it asks first, as in the grid). A selected mask or healing spot is still deleted first.
