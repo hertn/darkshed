@@ -281,7 +281,7 @@ export function createEditPanel() {
     const it = curItem(); if (!it || !isEdited(it)) return;
     it.params = paramDefaults(); it.off = new Set(); it.masks = []; it.spots = []; it.selectedMask = null; it.crop = defaultCrop();
     sync(); changed({ edit: true, geo: true }); commit('Reset to original');
-    bus.emit('masks-changed');
+    bus.emit('masks-changed'); bus.emit('reset-all');
     toast('Reset to original. Undo brings your edits back.');
   };
   row.append(autoBtn, bwBtn, resetBtn);

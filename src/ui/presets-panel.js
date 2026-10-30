@@ -381,6 +381,8 @@ export function createPresetsPanel({ editSync }) {
 
   bus.on('presets', () => { if (el.classList.contains('show')) rebuild(); });
   bus.on('luts', () => { if (el.classList.contains('show')) rebuild(); });
+  // a full reset takes the applied preset off too, so its tile is no longer outlined and the next press applies it again
+  bus.on('reset-all', () => { amountState = null; showAmount(); for (const o of body.querySelectorAll('.preset.on')) o.classList.remove('on'); });
   bus.on('select', () => { thumbsFor = null; amountState = null; if (el.classList.contains('show')) rebuild(); });
   loadUserPresets();
 

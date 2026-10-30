@@ -121,7 +121,7 @@ uniform vec4 uMC[8];
 uniform vec3 uHsl[8];
 uniform vec3 uGrd[4];       // shadow, mid, high, global: (hue 0..1, sat 0..1, lum -1..1)
 uniform vec2 uGrdBB;        // blending, balance
-uniform vec4 uTn;           // slider strengths (see tuning.js): wb temp, wb tint, highlights, highlights start
+uniform vec4 uTn;           // highlights (see tuning.js): start at small amounts, -, strength, start at 100
 uniform float uGrdK;
 uniform vec4 uGt;           // grading: luminance strength, zone falloff at blending 0 and 100
 uniform vec2 uMk;           // shadow/highlight mask: share of the brightest channel (vs luma); white balance: share of luminance kept constant
@@ -187,12 +187,13 @@ vec3 camCurve(vec3 p) {
   return r + (p - clamp(p, 0.0, 1.0));
 }
 uniform float uRawOff;       // RAW: camera brightness offset in stops
-uniform vec2 uRawHl;        // RAW highlights: stops at +100 / -100 (tuning.js)
+uniform vec4 uRawHl;        // RAW highlights: stops at +100 / -100, brightness scale at small amounts / at +100 / -100 (tuning.js)
 const float HLX[9] = float[9](0.0, 0.04, 0.10, 0.15, 0.20, 0.27, 0.35, 0.44, 1.0);
 const float HLY[9] = float[9](0.0, 0.0, 0.10, 0.28, 0.39, 0.49, 0.63, 1.0, 1.1);
-// RAW highlights work on the picture after the base curve: a smooth lift that grows with brightness (measured on Lightroom exports)
+// RAW highlights work on the picture after the base curve: a smooth lift that grows with brightness (measured on Lightroom exports
+// at +100 / -100). As in Lightroom, small amounts only reach the brightest tones and the range widens as the slider goes further.
 vec3 hlRaw(vec3 pe, float v) {
-  float l = clamp(luma(pe), 0.0, 1.0), m = 0.0;
+  float l = clamp(luma(pe) * mix(uRawHl.z, uRawHl.w, abs(v)), 0.0, 1.0), m = 0.0;
   for (int i = 0; i < 8; i++) if (l >= HLX[i]) m = mix(HLY[i], HLY[i + 1], clamp((l - HLX[i]) / (HLX[i + 1] - HLX[i]), 0.0, 1.0));
   return enc(max(dec(max(pe, 0.0)) * exp2(v * m * (v > 0.0 ? uRawHl.x : uRawHl.y)), 0.0));
 }
@@ -243,7 +244,7 @@ vec3 toneLin(vec3 c, vec4 A, vec4 B, float glob) {
   vec3 ec = enc(c);
   float le = mix(luma(ec), max(ec.r, max(ec.g, ec.b)), uMk.x);
   float ms = 1.0 - smoothstep(0.0, uTn2.w, le);
-  float mh = smoothstep(uTn.w, 1.0, le) * (1.0 - smoothstep(uTn3.z, 1.0, le));
+  float mh = smoothstep(mix(uTn.x, uTn.w, abs(A.z)), 1.0, le) * (1.0 - smoothstep(uTn3.z, 1.0, le));     // the range widens with the amount
   c *= exp2(A.w * uTn2.z * ms);
   c += max(A.w, 0.0) * uTn3.w * ms * smoothstep(0.0, 0.003, le);
   if (!uRawOn) c *= exp2(A.z * uTn.z * mh);
@@ -951,7 +952,7 @@ export class Renderer {
     });
     gl.uniform3fv(p.u('uGrd'), grd);
     gl.uniform2f(p.u('uGrdBB'), par.grade_blend / 100, par.grade_balance / 100);
-    gl.uniform4f(p.u('uTn'), 0, 0, TUNE.hlK, TUNE.hlLo);
+    gl.uniform4f(p.u('uTn'), TUNE.hlLoMin, 0, TUNE.hlK, TUNE.hlLo);
     gl.uniform1f(p.u('uGrdK'), TUNE.grdK);
     gl.uniform4f(p.u('uGt'), TUNE.gdL, TUNE.gdA, TUNE.gdB, TUNE.gdF);
     gl.uniform2f(p.u('uMk'), TUNE.msK, state.raw ? TUNE.rawWbL : TUNE.wbL);
@@ -965,7 +966,7 @@ export class Renderer {
     const bp = state.raw ? (par.baseProfile || '') : '';
     gl.uniform2f(p.u('uProf'), ...(BASE_LOOKS[bp] || [0, 1]));
     { const cc = !state.raw ? null : bp === 'camera' ? state.camFit : rawCamCurve(state.camera); gl.uniform1i(p.u('uRawCc'), cc ? 1 : 0); if (cc) gl.uniform3fv(p.u('uRawCcK'), cc); else gl.uniform3fv(p.u('uRawCcK'), new Float32Array(51)); }
-    gl.uniform2f(p.u('uRawHl'), TUNE.rawHlPos, TUNE.rawHlNeg);
+    gl.uniform4f(p.u('uRawHl'), TUNE.rawHlPos, TUNE.rawHlNeg, TUNE.rawHlNarrow, TUNE.rawHlWide);
     gl.uniform3fv(p.u('uRB'), TUNE.rawBase);
     gl.uniform2f(p.u('uRBx'), TUNE.rawX0, TUNE.rawDx);
     gl.uniform1f(p.u('uPPc'), TUNE.ppCurve);

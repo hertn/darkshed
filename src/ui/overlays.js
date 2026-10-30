@@ -53,7 +53,15 @@ export function modal(title, build, { buttons = [], closeX = true } = {}) {
   m.append(h, body, foot); back.append(m); root.append(back);
   if (!buttons.length) foot.remove();
   const close = () => { back.remove(); removeEventListener('keydown', onKey, true); };
-  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const onKey = (e) => {
+    if (root.lastElementChild !== back) return;          // only the window on top answers
+    if (e.key === 'Escape') close();
+    // Enter confirms (the primary button); text fields, lists and focused buttons keep their own Enter
+    else if (e.key === 'Enter' && !/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName)) {
+      const b = foot.querySelector('.btn.primary'); if (!b) return;
+      e.preventDefault(); e.stopPropagation(); b.click();
+    }
+  };
   addEventListener('keydown', onKey, true);
   back.addEventListener('pointerdown', (e) => { if (e.target === back) close(); });
   if (closeX) {          // close button in the top-right corner
