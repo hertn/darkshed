@@ -244,7 +244,7 @@ function resetAll() {
   const it = curItem(); if (!it) return;
   it.params = defaults(); it.off = new Set(); it.masks = []; it.spots = []; it.selectedMask = null; it.crop = defaultCrop();
   editSync(); changed({ edit: true, geo: true }); commit('Reset');
-  bus.emit('masks-changed');
+  bus.emit('masks-changed'); bus.emit('reset-all');
 }
 bus.on('cmd', (c) => {
   if (c === 'copy') copySettings();
@@ -262,7 +262,7 @@ const MOD = MAC ? '⌘' : 'Ctrl';
 const shortcutList = () => [
   ['Photos', [
     ['Next / previous photo', ['→', '←']], ['Grid / cull view', ['G']], ['Show or hide the filmstrip', ['S']],
-    ['Rating', ['0', '–', '5']], ['Pick / reject / unflag', ['P', 'X', 'U']],
+    ['Rating', ['0', '–', '5']], ['Remove from DarkShed', ['Delete']], ['Confirm a question', ['Enter']], ['Pick / reject / unflag', ['P', 'X', 'U']],
   ]],
   ['Tools and panels', [
     ['Edit', ['E']], ['Crop and rotate', ['C']], ['Healing (spot removal)', ['Q']], ['Masking', ['M']], ['Presets', ['L']], ['Profiles (RAW)', ['R']], ['Info', ['I']],
@@ -360,6 +360,7 @@ addEventListener('keydown', (e) => {
   const t = e.target;
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName) && t.type !== 'range' && t.type !== 'checkbox') return;
   if (t.isContentEditable) return;
+  if ($('modalRoot').childElementCount) return;      // an open window owns the keyboard (Enter and Escape are handled there)
   const mod = e.metaKey || e.ctrlKey, k = e.key;
   if (mod) {
     if (k.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
@@ -374,6 +375,7 @@ addEventListener('keydown', (e) => {
   if (panes[app.tool]?.impl?.keydown?.(e)) return;
   if (k === 'ArrowRight') lib.step(1);
   else if (k === 'ArrowLeft') lib.step(-1);
+  else if (k === 'Delete' || k === 'Backspace') { if (curItem()) { e.preventDefault(); lib.confirmRemoveSelected(); } }
   else if (k === 'g' || k === 'G') grid.toggle();
   else if (k === 's' || k === 'S') toggleFilmstrip();
   else if ((k === 'f' || k === 'F') && fsCan) toggleFullscreen();

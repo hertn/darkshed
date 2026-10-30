@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.12
+- Reset (the button and "Reset all edits") now also takes the applied preset off: its tile is no longer outlined, so one click applies it again (it used to take two).
+- Delete or Backspace in the editor removes the open photo (it asks first, as in the grid). A selected mask or healing spot is still deleted first.
+- Enter confirms a question (Remove, Delete, OK, Export…); Escape still cancels. While a window is open, keys no longer act on the app behind it.
+- Highlights reaches further into the lighter tones, and its range widens as you drag: small amounts touch only the brightest parts, -100 / +100 reach well into the mid-tones.
+
 ## 0.9.11
 - Masks: a Duplicate button (next to Delete mask) copies the selected mask with all its shapes, brush strokes and adjustments. The copy is placed right below the original and selected, ready to change.
 - Remove from the menu in the grid now removes every selected photo (it used to remove only the photo open in the editor).

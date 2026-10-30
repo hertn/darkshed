@@ -27,7 +27,8 @@ export const TUNE = {
   wbKt: [1.435, 0.142, 0.076, 0.033, 1.212, 0.054, -0.019, -0.007, 0.977], // colour change at temperature +25 (rows: red, green, blue out)
   wbKn: [1.022, 0.058, 0.003, 0.0, 0.988, 0.0, 0.014, 0.018, 1.085],      // colour change at tint +20
   hlK: 0.49,      // stops of highlight pull at -100
-  hlLo: 0.54,    // brightness (0..1) where the highlights slider starts to act
+  hlLo: 0.10,    // brightness (0..1) where the highlights slider starts to act at +100 / -100
+  hlLoMin: 0.35, // ... and at small amounts (in between it moves down with the slider, as in Lightroom)
   grdK: 0.35,    // colour grading strength
   exK: 1.37,      // exposure: stops per unit
   ctK: 0.98,      // contrast strength
@@ -62,6 +63,8 @@ export const TUNE = {
   rawDx: 0.5,
   rawHlPos: 1.12,  // RAW highlights: strength at +100 / -100 (Lightroom: about +1 stop / -0.9 stop in the top half)
   rawHlNeg: 1.06,
+  rawHlNarrow: 1.5, // RAW highlights: brightness is scaled by this before the mask at small amounts, so only the top tones react ...
+  rawHlWide: 2.5,    // ... and by this at +100 / -100 (above 1 reaches further down than the measured fit)
   rawWbL: 1,     // RAW white balance keeps the brightness (1 = fully)
   rawBase: [0.0022, 0.0022, 0.0019, 0.0025, 0.0025, 0.0022, 0.0029, 0.0029, 0.0025, 0.0035, 0.0035, 0.0029, 0.0045, 0.0045, 0.0036, 0.0063, 0.0062, 0.0054, 0.0096, 0.0093, 0.0093, 0.0147, 0.0143, 0.0149, 0.0222, 0.0219, 0.0223, 0.0334, 0.0329, 0.0325, 0.0493, 0.0483, 0.0475, 0.0721, 0.0706, 0.0705, 0.106, 0.1039, 0.1046, 0.1545, 0.1514, 0.1527, 0.2171, 0.2144, 0.2162, 0.2873, 0.2886, 0.2843, 0.3621, 0.3651, 0.366, 0.4805, 0.4777, 0.4723, 0.6145, 0.6127, 0.6095, 0.7512, 0.7465, 0.7636, 0.9054, 0.9088, 0.9001, 0.9468, 0.9487, 0.9438, 0.9764, 0.9772, 0.975, 0.9941, 0.9943, 0.9938, 1, 1, 1],   // encoded value (0..1) per knot, red / green / blue
   hlTop: 0.998,  // brightness where the highlights slider fades out again (white stays white)
