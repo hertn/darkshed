@@ -7,8 +7,9 @@ import { patchExif, injectExif } from './exif.js';
 import { getLut } from './looks.js';
 import { zip } from './zip.js';
 import { ensureCamFit } from './camfit.js';
-import { kelvinGains } from './wb.js';
+import { paramGains } from './wb.js';
 import { patchImage, accessRgb16, accessRgba8 } from './spots.js';
+import { maskFromRgb16, maskFromBitmap } from './tonemask.js';
 import { displayP3Profile, injectIccJpeg, injectIccPng } from './icc.js';
 import { tiff16 } from './tiff.js';
 import { jpegEncoder } from './jpeg.js';
@@ -48,7 +49,8 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
     if (item.params.baseProfile === 'camera') { onProgress(0.03, 'Matching the camera look…'); await ensureCamFit(item); }
     const st = renderState(item);
     if (full.camera) st.camera = full.camera;
-    if (full.wb && item.params.wbK) st.wbGain = kelvinGains(full.wb, item.params.wbK);
+    if (full.rawBias != null) st.rawBias = full.rawBias;
+    if (full.wb && !st.p.temp && (st.p.wbK || st.p.tint)) st.wbGain = paramGains(full.wb, st.p);
     const geo = makeGeo(item.crop, A, false);
     er.setGeometry(geo);
 
@@ -83,9 +85,12 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
         upload = new Uint8Array(id.data.buffer);
       }
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.SRGB8_ALPHA8, FW, FH, 0, gl.RGBA, gl.UNSIGNED_BYTE, upload);
+      er.setToneMask(maskFromBitmap(spots.length ? await createImageBitmap(new ImageData(new Uint8ClampedArray(upload.buffer), FW, FH)) : full.bitmap));
+      gl.bindTexture(gl.TEXTURE_2D, bmpTex);   // setToneMask bound its own texture; the parameters below are for the photo
       for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
       full.bitmap.close();
     }
+    if (full.kind === 'raw') er.setToneMask(maskFromRgb16(FW, FH, full.rgb16, full.colors || 3, lutLinear16));
     const buf = full.kind === 'raw' ? new Uint16Array(FW * STRIP * 4) : null;
     const ch3 = full.colors || 3;
     for (let y0 = 0; y0 < FH; y0 += STRIP) {

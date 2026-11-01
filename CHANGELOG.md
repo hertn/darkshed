@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.13
+- Shadows and Highlights now work the way Lightroom's do: how much a spot is lifted or darkened depends on the area around it, not on that one pixel. Detail inside dark or bright areas keeps its contrast instead of going flat, and a lit face in a dark scene gets the same lift as the scene around it. Checked against Lightroom Classic exports of 10 real edits plus single-slider tests: the typical colour difference dropped by about a quarter (median 6.5 to 5.0), better or equal on all but one photo.
+- Highlights pulled down (minus) is gentler, matching Lightroom (it used to darken bright areas much more).
+- Noise reduction: the Luminance slider now keeps working all the way to 100 (it used to stop doing anything visible past about 20) and also reaches the coarser, blotchy noise of high-ISO photos. Color noise reduction reaches wider colour blotches. Edges stay sharp.
+- RAW colour and white balance match Lightroom much more closely: Kelvin and Tint use Lightroom's numbers (a Lightroom preset's own Temperature and Tint now carry over), Fujifilm RAW files get the camera's exposure offset that Lightroom applies, and HSL, Calibration, Contrast, Vignette, Sharpening and the built-in film looks were re-measured against Lightroom Classic.
+- Manual lens distortion now bends the right way round (as in Lightroom).
+- White balance Temp slider no longer goes haywire: on photos with a strong magenta tint (many night and indoor shots), dragging it warm made the colours jump, flip and snap back. It now changes smoothly all the way, with the same safety limits Lightroom uses. The slider knob also stays under your finger instead of jumping to the nearest 50 K mark.
+- Phone: after a reload the open tool's sheet came back empty (except Light) until you switched tools, when solo mode (one section open at a time) was on. Solo mode now only acts on desktop.
+
 ## 0.9.12
 - Reset (the button and "Reset all edits") now also takes the applied preset off: its tile is no longer outlined, so one click applies it again (it used to take two).
 - Delete or Backspace in the editor removes the open photo (it asks first, as in the grid). A selected mask or healing spot is still deleted first.

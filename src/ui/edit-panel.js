@@ -450,4 +450,5 @@ export function setSolo(on) {
   if (on) { const keep = Object.values(sections).find((s) => s.el.open)?.el; closeOthers(keep); const sub = Object.values(subs).find((s) => s.el.open && s.parent === Object.entries(sections).find(([, x]) => x.el === keep)?.[0]); closeOtherSubs(sub?.el); }
 }
 export const isSolo = () => soloOn;
-if (soloOn) setTimeout(() => closeOthers(Object.values(sections).find((s) => s.el.open)?.el), 0);
+// not on phones: there the dock picks the one section shown, and this closed it again after a reload (only Light, the first, survived)
+if (soloOn) setTimeout(() => !document.body.classList.contains('m') && closeOthers(Object.values(sections).find((s) => s.el.open)?.el), 0);

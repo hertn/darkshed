@@ -6,6 +6,7 @@
 
 import { HSL_BANDS, GRADE_ZONES, MAX_MASKS, MAX_BRUSH_MASKS, MAX_COMPS, identityCurves } from './params.js';
 import { TUNE, BASE_LOOKS, rawCamStops, rawCamCurve } from './tuning.js';
+import { maskFromHalf } from './tonemask.js';
 const colMajor = (k) => [k[0], k[3], k[6], k[1], k[4], k[7], k[2], k[5], k[8]];   // rows -> GL's column order
 import { evalCurve, curvesActive, curveIsIdentity } from './curves-math.js';
 
@@ -110,6 +111,9 @@ precision highp sampler3D;
 uniform sampler2D uTex;
 uniform sampler2D uCurve;
 uniform sampler3D uLut;
+uniform sampler2D uTm;      // tone map mask: log2 brightness of the region (src/tonemask.js)
+uniform vec2 uTmSize;
+uniform vec2 uTmP;          // locality (0 = per pixel), upsampling range sigma (stops)
 uniform vec2 uImgPx;        // size of the image coordinate space (px)
 uniform vec4 uRegion;       // x, y, w, h of the rendered region (px)
 uniform vec2 uTexOrigin;    // where the source texture sits in image px
@@ -125,7 +129,7 @@ uniform vec4 uTn;           // highlights (see tuning.js): start at small amount
 uniform float uGrdK;
 uniform vec4 uGt;           // grading: luminance strength, zone falloff at blending 0 and 100
 uniform vec2 uMk;           // shadow/highlight mask: share of the brightest channel (vs luma); white balance: share of luminance kept constant
-uniform vec3 uWbG;            // RAW white balance set in Kelvin: per-channel gains relative to the as-shot white balance
+uniform mat3 uWbG;            // RAW white balance set in Kelvin: colour matrix relative to the as-shot white balance
 uniform float uWbOn;
 uniform mat3 uWmT, uWmN;    // white balance matrices at temperature +25 and tint +20
 uniform float uPPc;         // share of the tone curve done in ProPhoto primaries
@@ -148,6 +152,7 @@ uniform vec2 uWf;           // white balance fade towards the highlights: amount
 uniform vec4 uTn4;          // vibrance, saturation strength
 uniform vec4 uTn2;          // exposure, contrast, shadows, shadows range
 uniform vec4 uTn3;          // whites, blacks, highlights fade-out, shadows lift
+uniform vec2 uCalSh;        // calibration shadow tint: range, strength
 uniform float uLutAmt, uLutSize, uLensVig, uCalTint;
 uniform mat3 uCalM;
 uniform bool uCalOn;
@@ -157,6 +162,7 @@ out vec4 o;
 ${MASK_FN}
 
 uniform float CEN[8];       // hue centre of each HSL band (degrees)
+uniform float uHslLc;      // HSL luminance -> saturation coupling
 uniform vec4 uHk;           // HSL: hue degrees at 100, saturation, luminance strength, window shape (0 = triangle, 1 = smooth)
 
 vec3 enc(vec3 c) {
@@ -192,8 +198,8 @@ const float HLX[9] = float[9](0.0, 0.04, 0.10, 0.15, 0.20, 0.27, 0.35, 0.44, 1.0
 const float HLY[9] = float[9](0.0, 0.0, 0.10, 0.28, 0.39, 0.49, 0.63, 1.0, 1.1);
 // RAW highlights work on the picture after the base curve: a smooth lift that grows with brightness (measured on Lightroom exports
 // at +100 / -100). As in Lightroom, small amounts only reach the brightest tones and the range widens as the slider goes further.
-vec3 hlRaw(vec3 pe, float v) {
-  float l = clamp(luma(pe) * mix(uRawHl.z, uRawHl.w, abs(v)), 0.0, 1.0), m = 0.0;
+vec3 hlRaw(vec3 pe, float v, float lreg) {          // lreg: brightness of the pixel's region (tone map mask), same scale as luma(pe)
+  float l = clamp(lreg * mix(uRawHl.z, uRawHl.w, abs(v)), 0.0, 1.0), m = 0.0;
   for (int i = 0; i < 8; i++) if (l >= HLX[i]) m = mix(HLY[i], HLY[i + 1], clamp((l - HLX[i]) / (HLX[i + 1] - HLX[i]), 0.0, 1.0));
   return enc(max(dec(max(pe, 0.0)) * exp2(v * m * (v > 0.0 ? uRawHl.x : uRawHl.y)), 0.0));
 }
@@ -224,17 +230,34 @@ mat3 wbMat(mat3 K, float t) {
 }
 const mat3 TOPP = mat3(0.529346, 0.098374, 0.016883, 0.330073, 0.873461, 0.117672, 0.140581, 0.028165, 0.865444);
 const mat3 FROMPP = mat3(2.034076, -0.228813, -0.008570, -0.727334, 1.231730, -0.153287, -0.306742, -0.002917, 1.161856);
+// region / pixel brightness ratio from the tone map mask (1 = per pixel). Joint bilateral upsampling: the cells around the pixel
+// count less the more their brightness differs from the pixel's own, so the region never leaks across a hard edge.
+float gTmK = 1.0;
+float tmRatio(vec2 uv, float lp) {
+  vec2 g = uv * uTmSize - 0.5;
+  vec2 f = fract(g); ivec2 i0 = ivec2(floor(g)), mx = ivec2(uTmSize) - 1;
+  float acc = 0.0, ws = 0.0, s2 = 2.0 * uTmP.y * uTmP.y;
+  for (int y = -1; y <= 2; y++) for (int x = -1; x <= 2; x++) {
+    float v = texelFetch(uTm, clamp(i0 + ivec2(x, y), ivec2(0), mx), 0).r;
+    vec2 d = vec2(x, y) - f;
+    float w = exp(-dot(d, d) / 1.2 - (v - lp) * (v - lp) / s2) + 1e-6;
+    acc += v * w; ws += w;
+  }
+  return exp2(clamp(uTmP.x * (acc / ws - lp), -10.0, 10.0));
+}
 // linear-light part of an adjustment set: white balance, exposure (+ highlight shoulder), shadows / highlights
 vec3 toneLin(vec3 c, vec4 A, vec4 B, float glob) {
   float wf = 1.0 - uWf.x * smoothstep(uWf.y, 1.0, luma(enc(c)));
-  mat3 wt = (glob * uWbOn > 0.5) ? mat3(pow(uWbG.x, wf), 0.0, 0.0, 0.0, pow(uWbG.y, wf), 0.0, 0.0, 0.0, pow(uWbG.z, wf)) : wbMat(uWmT, B.z * 4.0 * wf);
-  mat3 wm = wt * wbMat(uWmN, B.w * 5.0 * wf);
-  wm /= mix(1.0, luma(wm * vec3(1.0)), uMk.y);
+  mat3 wt = (glob * uWbOn > 0.5) ? mat3(1.0) + (uWbG - mat3(1.0)) * wf : wbMat(uWmT, B.z * 4.0 * wf);
+  mat3 wm = (glob * uWbOn > 0.5) ? wt : wt * wbMat(uWmN, B.w * 5.0 * wf);   // RAW in Kelvin: tint is part of the gains
+  wm /= mix(1.0, luma(wm * vec3(1.0)), (!uRawOn && B.z < 0.0) ? 1.0 : uMk.y);   // JPEG: cooling keeps its brightness, as in Lightroom
   c = wm * c;
   if (uPPe > 0.5) c = TOPP * c;                        // exposure and its highlight roll-off work in ProPhoto, as in Lightroom
   float ex = A.x * uTn2.x;
+  if (!uRawOn && ex < 0.0) ex *= 0.8;                  // JPEG: Lightroom darkens a little less than it brightens ...
   float W = exp2(max(ex, 0.0)) * mix(1.0, max(1.0, max(wm[0][0] + wm[1][0] + wm[2][0], max(wm[0][1] + wm[1][1] + wm[2][1], wm[0][2] + wm[1][2] + wm[2][2]))), uTn4.z);
   c *= exp2(ex);
+  if (!uRawOn && ex < 0.0) { float lc = luma(c); c = max(lc + (c - lc) * (1.0 - ex * 0.25), 0.0); }   // ... and keeps the colour
   float KNEE = uKnee;
   float a = (W - 1.0) / (1.0 - KNEE);
   vec3 t = clamp((c - KNEE) / max(W - KNEE, 1e-4), 0.0, 1.0);
@@ -243,30 +266,32 @@ vec3 toneLin(vec3 c, vec4 A, vec4 B, float glob) {
   if (uPPe > 0.5) c = max(FROMPP * c, 0.0);
   vec3 ec = enc(c);
   float le = mix(luma(ec), max(ec.r, max(ec.g, ec.b)), uMk.x);
-  float ms = 1.0 - smoothstep(0.0, uTn2.w, le);
-  float mh = smoothstep(mix(uTn.x, uTn.w, abs(A.z)), 1.0, le) * (1.0 - smoothstep(uTn3.z, 1.0, le));     // the range widens with the amount
+  vec3 er = enc(c * gTmK);                             // the region's brightness decides the strength (tone map mask)
+  float lr = mix(luma(er), max(er.r, max(er.g, er.b)), uMk.x);
+  float ms = 1.0 - smoothstep(0.0, uTn2.w, lr);
+  float mh = smoothstep(mix(uTn.x, uTn.w, abs(A.z)), 1.0, lr) * (1.0 - smoothstep(A.z > 0.0 ? uTn3.z : 0.998, 1.0, lr));   // range widens with the amount; - reaches white
   c *= exp2(A.w * uTn2.z * ms);
   c += max(A.w, 0.0) * uTn3.w * ms * smoothstep(0.0, 0.003, le);
-  if (!uRawOn) c *= exp2(A.z * uTn.z * mh);
+  if (!uRawOn) c *= exp2(A.z * (A.z > 0.0 ? uTn.z : uTn.y) * mh);
   return c;
 }
 // display-referred part: blacks / whites, contrast
 vec3 toneEnc(vec3 p, vec4 A, vec4 B) {
   float bp = -B.y * uTn3.y;
-  float wp = 1.0 - B.x * uTn3.x;
+  float wp = 1.0 - B.x * uTn3.x * ((!uRawOn && B.x < 0.0) ? 0.55 : 1.0);   // JPEG whites - is gentler in Lightroom
   p = (p - bp) / max(wp - bp, 0.05);
   vec3 q = clamp(p, 0.0, 1.0);
   vec3 qw = pow(q, vec3(uCtP));                       // pivot of the contrast curve: below 1 moves it under mid-grey
   vec3 sc = pow(qw * qw * (3.0 - 2.0 * qw), vec3(1.0 / uCtP));
   float ct = A.y * uTn2.y;
-  return ct >= 0.0 ? mix(p, sc, ct) : mix(p, vec3(0.5), -ct * 0.5);
+  return ct >= 0.0 ? mix(p, sc, ct) : mix(p, vec3(0.5), -ct * 0.18);
 }
 vec3 colorAdj(vec3 p, vec4 C) {
   float lm = luma(p);
   float mx = max(p.r, max(p.g, p.b));
   float mn = min(p.r, min(p.g, p.b));
   float sat = (mx - mn) / max(mx, 1e-4);
-  float k = max(1.0 + C.y * uTn4.y + C.x * uTn4.x * (1.0 - sat), 0.0);
+  float k = max(1.0 + C.y * uTn4.y + C.x * uTn4.x * (C.x < 0.0 ? 2.0 : 1.0) * (1.0 - sat), 0.0);
   vec3 lp = dec(clamp(p, 0.0, 1.0));                  // Lightroom scales colour in linear light, around the luma
   float ll = luma(lp);
   return mix(p, enc(max(ll + (lp - ll) * k, 0.0)), uTn4.w);
@@ -295,26 +320,35 @@ vec3 grade(vec3 p) {
 void main() {
   vec2 px = uRegion.xy + gl_FragCoord.xy;           // image px of this fragment (row 0 = top)
   vec3 c = texture(uTex, (px - uTexOrigin) / uTexSize).rgb;
+  if (uTmP.x > 0.0) gTmK = tmRatio(px / uImgPx, log2(max(luma(c), exp2(-14.0))));
   if (uBypass) {                                     // "before": no edits, but the photo's profile is part of how it is rendered
-    if (uRawOn) { c *= exp2(uRawOff); o = vec4(hlRaw(profAdj(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uProf), 0.0), 1.0); }
+    if (uRawOn) { c *= exp2(uRawOff); vec3 pb = profAdj(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uProf); o = vec4(hlRaw(pb, 0.0, luma(pb)), 1.0); }
     else o = vec4(enc(c), 1.0);
     return;
   }
   vec2 hp = px / uImgPx.y;                           // height units, for mask geometry
   if (uLensVig != 0.0) {                             // lens vignetting correction: gain grows with distance from the centre
     vec2 ctr = vec2(uImgPx.x / uImgPx.y * 0.5, 0.5);
-    c *= exp2(uLensVig * 1.6 * dot(hp - ctr, hp - ctr) / dot(ctr, ctr));
+    c *= exp2(uLensVig * 0.8 * dot(hp - ctr, hp - ctr) / dot(ctr, ctr));
   }
   vec2 layerUv = gl_FragCoord.xy / uRegion.zw;
 
   if (uCalOn) {                                      // calibration: new colour primaries, then a tint confined to the shadows
     c = max(uCalM * c, 0.0);
-    float sh = 1.0 - smoothstep(0.0, 0.18, luma(c));
-    c.g *= exp2(-uCalTint * 0.6 * sh);
+    float sh = 1.0 - smoothstep(0.0, uCalSh.x, luma(c));
+    float l0 = luma(c);
+    c *= exp2(uCalTint * uCalSh.y * sh * (uCalTint > 0.0 ? vec3(0.0, -0.5, 2.0) : vec3(0.3, -1.0, 2.4)));
+    c *= l0 / max(luma(c), 1e-6) * exp2(-max(uCalTint, 0.0) * 2.0 * uCalSh.y * sh);   // + (magenta) also darkens, as in Lightroom
   }
   if (uRawOn) c *= exp2(uRawOff);
   c = toneLin(c, uGA, uGB, 1.0);
-  vec3 p = uRawOn ? hlRaw(profAdj(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uProf), uGA.z) : enc(c);
+  vec3 p;
+  if (uRawOn) {
+    vec3 pb = profAdj(uRawCc ? camCurve(baseEnc(c)) : baseEnc(c), uProf);
+    float lreg = luma(pb);
+    if (gTmK != 1.0 && uGA.z != 0.0) { vec3 cr = c * gTmK; lreg = luma(profAdj(uRawCc ? camCurve(baseEnc(cr)) : baseEnc(cr), uProf)); }
+    p = hlRaw(pb, uGA.z, lreg);
+  } else p = enc(c);
   p = toneEnc(p, uGA, uGB);
 
   // local adjustments
@@ -324,7 +358,7 @@ void main() {
     if (w < 0.002) continue;
     vec3 cl = toneLin(dec(p), uMA[i], uMB[i], 0.0);
     vec3 pl = colorAdj(toneEnc(enc(cl), uMA[i], uMB[i]), uMC[i]);
-    if (uRawOn) pl = hlRaw(pl, uMA[i].z);
+    if (uRawOn) pl = hlRaw(pl, uMA[i].z, luma(enc(dec(clamp(pl, 0.0, 1.0)) * gTmK)));
     p = mix(p, pl, w);
   }
 
@@ -357,7 +391,7 @@ void main() {
     }
     float sw = smoothstep(0.02, 0.2, hsv.y);
     hsv.x = fract(hsv.x + dh * uHk.x / 360.0 * sw + 1.0);
-    hsv.y = clamp(hsv.y * (1.0 + ds * uHk.y * sw), 0.0, 1.0);
+    hsv.y = clamp(hsv.y * max(1.0 + ds * uHk.y * sw, 0.0) * (1.0 - dl * uHslLc * sw), 0.0, 1.0);
     p = hsv2rgb(hsv) * (1.0 + dl * uHk.z * sw);
   }
   if (uBw) p = vec3(luma(clamp(p, 0.0, 1.0)));
@@ -417,6 +451,7 @@ float gnoise(vec2 p) {                                   // smooth gaussian nois
 
 vec2 suv;
 vec3 tap(vec2 offFull) { return texture(uSrc, suv + offFull * uInvFull / uSrcSize).rgb; }
+vec3 tapLod(vec2 offFull, float lod) { return textureLod(uSrc, suv + offFull * uInvFull / uSrcSize, lod).rgb; }
 float blurLuma(float r) {   // 3x3 gaussian on luminance, r in full-res px
   return luma(tap(vec2(0.0))) * 0.25
     + (luma(tap(vec2(r, 0.0))) + luma(tap(vec2(-r, 0.0))) + luma(tap(vec2(0.0, r))) + luma(tap(vec2(0.0, -r)))) * 0.125
@@ -431,14 +466,14 @@ vec3 blurRgb(float r) {
 void main() {
   vec2 S = vec2(uAspect * 0.5, 0.5) + uM * (uC + (vUv - 0.5) * uSz);   // source, height units
   vec2 ctr = vec2(uAspect * 0.5, 0.5);
-  if (uDistort != 0.0) {                                                // manual lens distortion, corners stay put so no empty edges appear
+  if (uDistort != 0.0) {                                                // manual lens distortion, corners stay put (as in Lightroom)
     vec2 q0 = S - ctr;
-    float k = uDistort * 0.3;
+    float k = -uDistort * (uDistort < 0.0 ? 0.7 : 0.3);   // + pinches the middle in (fixes barrel), - bulges it out
     q0 *= (1.0 + k * dot(q0, q0) / dot(ctr, ctr)) / (1.0 + k);
     S = ctr + q0;
   }
   suv = S / vec2(uAspect, 1.0);
-  if (suv.x < 0.0 || suv.y < 0.0 || suv.x > 1.0 || suv.y > 1.0) { o = vec4(uBg, 1.0); return; }
+  if (suv.x < 0.0 || suv.y < 0.0 || suv.x > 1.0 || suv.y > 1.0) { o = vec4(uDistort > 0.0 ? vec3(1.0) : uBg, 1.0); return; }   // Lightroom fills the gaps a pincushion fix leaves with white
   vec3 p = texture(uSrc, suv).rgb;
   if (uBypass) { o = vec4(p, 1.0); return; }
   if (uCaR != 0.0 || uCaB != 0.0) {                                     // lateral chromatic aberration: scale red / blue about the centre
@@ -473,26 +508,44 @@ void main() {
 
   // noise reduction: luminance via a 5x5 bilateral (wider and stronger with the slider), colour via a wide chroma blur
   if (uNrL > 0.0) {
-    float sig = mix(0.02, 0.3, uNrL);
-    float rad = max(mix(1.0, 2.2, uNrL), 1.0 / uInvFull);          // never finer than one texel: the on-screen copy is a reduced proxy
+    // joint bilateral, two scales. Neighbours are compared against a pre-blurred centre (not the noisy pixel itself, which
+    // capped the old filter at about a 2x reduction). The tap spacing grows with the slider and the taps read pre-filtered
+    // mip levels, so high settings also reach the coarse, blotchy noise of high-ISO raws (Lightroom 100 is near "plastic").
+    float a = uNrL;
     float l0 = luma(p);
-    float acc = l0, ws = 1.0;
-    for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) {
-      if (x == 0 && y == 0) continue;
-      vec2 o2 = vec2(x, y);
-      float s2 = luma(tap(o2 * rad));
-      float d = s2 - l0;
-      float w = exp(-dot(o2, o2) / 4.5) * exp(-d * d / (sig * sig));
-      acc += s2 * w; ws += w;
+    float sig = mix(0.035, 0.11, a);                                   // range sigma (display-referred luma)
+    float lAcc = 0.0, lW = 0.0;
+    for (int sc = 0; sc < 2; sc++) {
+      float rad = sc == 0 ? mix(1.0, 1.8, a) : mix(2.0, 6.0, a * a);   // tap spacing, full-res px
+      float lod = max(0.0, log2(rad * uInvFull) - 0.5);
+      float ref = luma(tapLod(vec2(0.0), lod + 1.0));                  // denoised reference for the range test
+      float acc = 0.0, ws = 0.0;
+      for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) {
+        vec2 o2 = vec2(x, y);
+        float s2 = luma(tapLod(o2 * rad, lod));
+        float d = s2 - ref;
+        float w = exp(-dot(o2, o2) / 4.5) * exp(-d * d / (sig * sig));
+        acc += s2 * w; ws += w;
+      }
+      float wsc = sc == 0 ? 1.0 : smoothstep(0.2, 0.9, a);             // the coarse scale only joins at higher settings
+      lAcc += acc / ws * wsc; lW += wsc;
     }
-    p += acc / ws - l0;
+    p += (lAcc / lW - l0) * min(1.0, a * 3.0);
   }
   if (uNrC > 0.0) {
-    float r = 1.0 + uNrC * 3.0;
-    vec3 acc = vec3(0.0);
-    for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) acc += tap(vec2(x, y) * r);
-    vec3 b = acc / 9.0;
-    p = mix(p, luma(p) + (b - luma(b)), uNrC);
+    // colour noise is coarse: wide chroma blur from pre-filtered levels, weighted to stay inside similar-luma regions
+    float r = mix(2.0, 9.0, uNrC);
+    float lod = max(0.0, log2(r * uInvFull) - 0.5);
+    float l0 = luma(p);
+    vec3 acc = vec3(0.0); float ws = 0.0;
+    for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) {
+      vec2 o2 = vec2(x, y);
+      vec3 s = tapLod(o2 * r, lod);
+      float d = luma(s) - l0;
+      float w = exp(-dot(o2, o2) / 5.0) * exp(-d * d / 0.012);
+      acc += (s - luma(s)) * w; ws += w;
+    }
+    p = mix(p, l0 + acc / ws, min(1.0, uNrC * 2.0));
   }
 
   // sharpening: unsharp mask on luminance, optionally restricted to edges (masking)
@@ -505,7 +558,7 @@ void main() {
     float l0 = luma(p);
     float det = l0 - blurLuma(max(uRadius, 0.8 / uInvFull));          // radius in full-size pixels, but never finer than the proxy can show
     float m = uMasking > 0.0 ? smoothstep(0.0, 0.01 + uMasking * 0.08, abs(det)) : 1.0;
-    p += det * eSharp * 3.0 * m;
+    p += det * eSharp * 3.0 * (1.0 + max(1.5 - uRadius, 0.0) * 3.7) * m;   // small radii need more gain to match Lightroom's fine detail
   }
 
   // texture (fine detail) and clarity (local contrast, mid-tones); negative values smooth
@@ -519,7 +572,7 @@ void main() {
     float lod = log2(max(1.0, 36.0 * uInvFull));
     vec3 big = textureLod(uSrc, suv, lod).rgb;
     float mid = 1.0 - pow(abs(2.0 * l0 - 1.0), 2.0) * 0.8;
-    if (eClar > 0.0) p += (l0 - luma(big)) * eClar * 1.6 * mid;
+    if (eClar > 0.0) p += (l0 - luma(big)) * eClar * 1.6 * mid + eClar * 0.09 * (1.0 - smoothstep(0.0, 0.5, abs(l0 - 0.4)));   // + a midtone lift, as in Lightroom
     else p = mix(p, big, -eClar * 0.6 * mid);
   }
   // dehaze: dark-channel estimate at a coarse mip level
@@ -533,7 +586,7 @@ void main() {
       p = (p - AIR) / t + AIR;
       p = mix(vec3(luma(p)), p, 1.0 + eDeh * 0.15);
     } else {
-      p = mix(p, vec3(AIR), -eDeh * 0.45 * (1.0 - dc * 0.5));
+      p = pow(max(mix(p, vec3(AIR), -eDeh * 0.04), 0.0), vec3(1.0 / (1.0 - eDeh * 0.8)));   // Lightroom lifts the midtones most
     }
   }
 
@@ -547,10 +600,10 @@ void main() {
       vec2 cc = c * (aspect > 1.0 ? vec2(aspect, 1.0) : vec2(1.0, 1.0 / aspect)) / max(aspect, 1.0 / aspect);
       r = mix(r, length(cc) / 1.4142, uVigRound);
     }
-    float start = mix(0.1, 0.85, uVigMid);
+    float start = mix(0.2, 0.7, uVigMid);
     float end = start + mix(0.05, 1.0, uVigFeather) * (1.2 - start);
     float m = smoothstep(start, end, r);
-    p = uVigAmt < 0.0 ? p * (1.0 + uVigAmt * m * 0.95) : mix(p, vec3(1.0), uVigAmt * m * 0.8);
+    p = uVigAmt < 0.0 ? p * (1.0 + uVigAmt * m * 0.95) : mix(p, vec3(1.0), min(uVigAmt * m * 2.2, 1.0));
   }
 
   // film grain: soft, clumpy and grey (not per-pixel colour noise), fixed to the image. Size is the clump width; roughness
@@ -680,6 +733,18 @@ export class Renderer {
     this.allocBrush(1, 1, 1);
     this.lutTex = null; this.lutSize = 0; this.lutId = null;
     this.setLut(null);
+    this.tmTex = null; this.setToneMask(null);
+  }
+
+  /** Tone map mask ({ w, h, data: Float32Array log2 brightness }, src/tonemask.js); null = none (per-pixel Highlights / Shadows). */
+  setToneMask(m) {
+    const gl = this.gl;
+    if (this.tmTex) gl.deleteTexture(this.tmTex);
+    this.tm = m;
+    const w = m ? m.w : 1, h = m ? m.h : 1;
+    this.tmTex = Renderer.tex2d(gl, w, h, gl.R32F, gl.RED, gl.FLOAT, m ? m.data : new Float32Array(1));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   }
 
   static tex2d(gl, w, h, internal, format, type, data) {
@@ -702,6 +767,7 @@ export class Renderer {
     for (const f of [this.fbo, this.bFbo, this.sFbo]) if (f) gl.deleteFramebuffer(f);
     this.tex = Renderer.tex2d(gl, width, height, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, half);
     this.texIsSrgb = false;
+    this.setToneMask(maskFromHalf(width, height, half));
     this.imgW = width; this.imgH = height; this.fullW = fullW; this.fullH = fullH;
     const mk = () => {
       const t = Renderer.tex2d(gl, width, height, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -733,6 +799,7 @@ export class Renderer {
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.imgW, this.imgH, gl.RGBA, gl.HALF_FLOAT, half);
+    this.setToneMask(maskFromHalf(this.imgW, this.imgH, half));
   }
 
   get aspect() { return this.imgW / this.imgH; }
@@ -922,6 +989,10 @@ export class Renderer {
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.brushTex);
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_3D, this.lutTex);
     gl.uniform1i(p.u('uTex'), 0); gl.uniform1i(p.u('uCurve'), 1); gl.uniform1i(p.u('uBrush'), 2); gl.uniform1i(p.u('uLut'), 3);
+    gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, this.tmTex);
+    gl.uniform1i(p.u('uTm'), 4);
+    gl.uniform2f(p.u('uTmSize'), this.tm ? this.tm.w : 1, this.tm ? this.tm.h : 1);
+    gl.uniform2f(p.u('uTmP'), this.tm ? TUNE.tmAmt : 0, TUNE.tmUp);
     const o = region?.tex || { origin: [0, 0], size: [this.imgW, this.imgH] };
     gl.uniform2f(p.u('uImgPx'), region?.imgW || this.imgW, region?.imgH || this.imgH);
     gl.uniform4f(p.u('uRegion'), reg.x, reg.y, reg.w, reg.h);
@@ -937,11 +1008,11 @@ export class Renderer {
     let hslOn = false;
     HSL_BANDS.forEach(([b], i) => ['hue', 'sat', 'lum'].forEach((k, j) => {
       const v = (par[`hsl_${b}_${k}`] || 0) / 100;
-      hsl[i * 3 + j] = v; if (v) hslOn = true;
+      hsl[i * 3 + j] = j === 0 ? v * TUNE.hsHb[i] : j === 1 && v < 0 ? v * TUNE.hsSneg : v; if (v) hslOn = true;
     }));
     gl.uniform3fv(p.u('uHsl'), hsl);
     gl.uniform1fv(p.u('CEN'), TUNE.hsC);
-    gl.uniform4f(p.u('uHk'), TUNE.hsH, TUNE.hsS, TUNE.hsL, TUNE.hsM);
+    gl.uniform4f(p.u('uHk'), TUNE.hsH, TUNE.hsS, TUNE.hsL, TUNE.hsM); gl.uniform1f(p.u('uHslLc'), TUNE.hsLc);
     gl.uniform1i(p.u('uHslOn'), hslOn ? 1 : 0);
     const grd = new Float32Array(12);
     let grdOn = false;
@@ -952,7 +1023,7 @@ export class Renderer {
     });
     gl.uniform3fv(p.u('uGrd'), grd);
     gl.uniform2f(p.u('uGrdBB'), par.grade_blend / 100, par.grade_balance / 100);
-    gl.uniform4f(p.u('uTn'), TUNE.hlLoMin, 0, TUNE.hlK, TUNE.hlLo);
+    gl.uniform4f(p.u('uTn'), TUNE.jpHlLo, TUNE.jpHlKneg, TUNE.jpHlK, TUNE.jpHlLo);   // highlights: JPEG only (RAW does it in the base curve)
     gl.uniform1f(p.u('uGrdK'), TUNE.grdK);
     gl.uniform4f(p.u('uGt'), TUNE.gdL, TUNE.gdA, TUNE.gdB, TUNE.gdF);
     gl.uniform2f(p.u('uMk'), TUNE.msK, state.raw ? TUNE.rawWbL : TUNE.wbL);
@@ -961,8 +1032,8 @@ export class Renderer {
     gl.uniform1f(p.u('uCtP'), TUNE.ctP);
     gl.uniform1f(p.u('uPPe'), TUNE.ppExp);
     gl.uniform1i(p.u('uRawOn'), state.raw ? 1 : 0);
-    gl.uniform3fv(p.u('uWbG'), state.wbGain || [1, 1, 1]); gl.uniform1f(p.u('uWbOn'), state.wbGain ? 1 : 0);
-    gl.uniform1f(p.u('uRawOff'), rawCamStops(state.camera));
+    gl.uniformMatrix3fv(p.u('uWbG'), false, colMajor(state.wbGain || [1, 0, 0, 0, 1, 0, 0, 0, 1])); gl.uniform1f(p.u('uWbOn'), state.wbGain ? 1 : 0);
+    gl.uniform1f(p.u('uRawOff'), rawCamStops(state.camera, state.rawBias));
     const bp = state.raw ? (par.baseProfile || '') : '';
     gl.uniform2f(p.u('uProf'), ...(BASE_LOOKS[bp] || [0, 1]));
     { const cc = !state.raw ? null : bp === 'camera' ? state.camFit : rawCamCurve(state.camera); gl.uniform1i(p.u('uRawCc'), cc ? 1 : 0); if (cc) gl.uniform3fv(p.u('uRawCcK'), cc); else gl.uniform3fv(p.u('uRawCcK'), new Float32Array(51)); }
@@ -972,8 +1043,8 @@ export class Renderer {
     gl.uniform1f(p.u('uPPc'), TUNE.ppCurve);
     gl.uniform2f(p.u('uWf'), TUNE.wbF, TUNE.wbA);
     gl.uniform4f(p.u('uTn4'), TUNE.vbK, TUNE.saK, TUNE.wbS, TUNE.satLin);
-    gl.uniform4f(p.u('uTn2'), state.raw ? TUNE.rawExK : TUNE.exK, TUNE.ctK, TUNE.shK, TUNE.shHi);
-    gl.uniform4f(p.u('uTn3'), TUNE.whK, TUNE.blK, TUNE.hlTop, TUNE.shLift);
+    gl.uniform4f(p.u('uTn2'), state.raw ? TUNE.rawExK : TUNE.exK, TUNE.ctK, state.raw ? TUNE.shK : TUNE.jpShK, state.raw ? TUNE.shHi : TUNE.jpShHi);
+    gl.uniform4f(p.u('uTn3'), state.raw ? TUNE.whK : TUNE.jpWhK, TUNE.blK, TUNE.jpHlTop, state.raw ? TUNE.shLift : 0);
     gl.uniform1i(p.u('uGrdOn'), grdOn ? 1 : 0);
     gl.uniform1i(p.u('uCurveOn'), curvesActive(par.curves) ? 1 : 0);
     gl.uniform1i(p.u('uBw'), par.bw ? 1 : 0);
@@ -985,15 +1056,15 @@ export class Renderer {
     {   // calibration matrix: columns are the adjusted red / green / blue primaries, rows normalised so neutrals stay neutral
       const hr = (par.calRedHue || 0) / 100, sr = (par.calRedSat || 0) / 100, hg = (par.calGreenHue || 0) / 100, sg = (par.calGreenSat || 0) / 100;
       const hb = (par.calBlueHue || 0) / 100, sb = (par.calBlueSat || 0) / 100, tint = (par.calShadowTint || 0) / 100;
-      const k = 0.4, W = [0.2126, 0.7152, 0.0722];
-      const sat = (v, s) => { const g = v[0] * W[0] + v[1] * W[1] + v[2] * W[2], f = 1 + s * 0.6; return v.map((x) => g + (x - g) * f); };
-      const R = sat([1, Math.max(hr, 0) * k, Math.max(-hr, 0) * k], sr);      // + hue: red toward orange / - toward magenta
-      const G = sat([Math.max(-hg, 0) * k, 1, Math.max(hg, 0) * k], sg);      // + hue: green toward cyan / - toward yellow
-      const B = sat([Math.max(hb, 0) * k, Math.max(-hb, 0) * k, 1], sb);      // + hue: blue toward purple / - toward cyan
+      const [kr, kg, kb] = TUNE.calHueK, [qr, qg, qb] = TUNE.calSatK, W = [0.2126, 0.7152, 0.0722];   // per primary, fitted to Lightroom Classic
+      const sat = (v, s, q) => { const g = v[0] * W[0] + v[1] * W[1] + v[2] * W[2], f = Math.max(0.05, 1 + s * q); return v.map((x) => g + (x - g) * f); };
+      const R = sat([1, Math.max(hr, 0) * kr, Math.max(-hr, 0) * kr], sr, qr);      // + hue: red toward orange / - toward magenta
+      const G = sat([Math.max(-hg, 0) * kg, 1, Math.max(hg, 0) * kg], sg, qg);      // + hue: green toward cyan / - toward yellow
+      const B = sat([Math.max(hb, 0) * kb, Math.max(-hb, 0) * kb, 1], sb, qb);      // + hue: blue toward purple / - toward cyan
       const rows = [[R[0], G[0], B[0]], [R[1], G[1], B[1]], [R[2], G[2], B[2]]].map((r) => { const t = r[0] + r[1] + r[2] || 1; return r.map((x) => x / t); });
       const on = [hr, sr, hg, sg, hb, sb, tint].some((v) => v !== 0);
       gl.uniformMatrix3fv(p.u('uCalM'), false, [rows[0][0], rows[1][0], rows[2][0], rows[0][1], rows[1][1], rows[2][1], rows[0][2], rows[1][2], rows[2][2]]);
-      gl.uniform1f(p.u('uCalTint'), tint);
+      gl.uniform1f(p.u('uCalTint'), tint); gl.uniform2f(p.u('uCalSh'), TUNE.calShR, state.raw ? TUNE.calShK : 0);
       gl.uniform1i(p.u('uCalOn'), on ? 1 : 0);
     }
     gl.uniform1i(p.u('uBypass'), bypass ? 1 : 0);
@@ -1218,7 +1289,7 @@ export class Renderer {
     this.tex = this.smallTex;
     for (const st of states) {
       if (st.lut) this.setLut(st.lut);
-      this.passEdit({ p: st.p, masks: [], raw: st.raw, camera: st.camera, camFit: st.camFit, wbGain: st.wbGain }, false, this.thumbFbo, { x: 0, y: 0, w, h, imgW: w, imgH: h, tex: { origin: [0, 0], size: [w, h] } });
+      this.passEdit({ p: st.p, masks: [], raw: st.raw, camera: st.camera, rawBias: st.rawBias, camFit: st.camFit, wbGain: st.wbGain }, false, this.thumbFbo, { x: 0, y: 0, w, h, imgW: w, imgH: h, tex: { origin: [0, 0], size: [w, h] } });
       const buf = new Uint8Array(w * h * 4);
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.thumbFbo);
       gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);

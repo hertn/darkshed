@@ -8,6 +8,9 @@ import { validPreset } from '../merge.js';
 import { parseCube } from '../lut.js';
 import { makeSmall, isRaw } from '../decode.js';
 import { asShotKelvin } from '../wb.js';
+
+/** The open RAW photo's colour data (for presets with a custom white balance), or null. */
+const rawWb = (it) => (it && isRaw(it.file) ? it.wb || app.loaded?.info?.wb || null : null);
 import { slider } from './slider.js';
 import { icon } from './icons.js';
 import { modal, toast, menu } from './overlays.js';
@@ -129,7 +132,7 @@ export function createPresetsPanel({ editSync }) {
     showAmount();
     const base = it ? clone(it.params) : defaults();      // with no photo open the looks are listed without previews
     const rs = it ? renderState(it) : {};                  // thumbnails of a RAW need to know it is one (base curve, camera)
-    const ex = { raw: rs.raw, camera: rs.camera, camFit: rs.camFit, wbGain: rs.wbGain };
+    const ex = { raw: rs.raw, camera: rs.camera, rawBias: rs.rawBias, camFit: rs.camFit, wbGain: rs.wbGain };
     const lookState = (patch, profile) => { const p = clone(base); applyLook(p, patch, profile); return { p, ...ex }; };
 
     const mine = userPresets();
@@ -141,7 +144,7 @@ export function createPresetsPanel({ editSync }) {
       const grid = section(g, true);
       for (const n of list.sort((a, b) => a.localeCompare(b))) {
         const pr = mine[n];
-        tile(grid, n, { p: previewParams(base, pr), ...ex }, () => applyStored(n, pr), {
+        tile(grid, n, { p: previewParams(base, pr, '', rawWb(it)), ...ex }, () => applyStored(n, pr), {
           items: () => [
             { label: 'Apply', onClick: () => applyStored(n, pr) },
             { label: 'Rename…', onClick: () => renameDialog(n) },
@@ -277,7 +280,7 @@ export function createPresetsPanel({ editSync }) {
     const it = curItem(); if (!it) { toast('Open a photo first'); return; }
     revertPrevious(it);
     const base = clone(it.params);
-    applyPreset(it.params, pr, '');
+    applyPreset(it.params, pr, '', rawWb(it));
     if (pr.mode === 'merge') it.params.profile = base.profile;
     finishApply(it, base, name);
   }
