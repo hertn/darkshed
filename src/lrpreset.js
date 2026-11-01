@@ -34,7 +34,7 @@ const SIMPLE = {
 const UNSUPPORTED = [
   [/^LookTable|^Look$|^Look[A-Z]|^Table_|^RGBTable/, 'camera profile / LUT'],
   [/^MaskGroupBasedCorrections$|^GradientBasedCorrections$|^CircularGradientBasedCorrections$|^PaintBasedCorrections$/, 'local adjustments'],
-  [/^LensProfile|^LensManualDistortion|^PerspectiveVertical|^PerspectiveHorizontal|^PerspectiveRotate|^PerspectiveScale|^AutoLateralCA|^LensProfileEnable/, 'lens / geometry corrections'],
+  [/^LensProfile|^PerspectiveVertical|^PerspectiveHorizontal|^PerspectiveRotate|^PerspectiveScale|^AutoLateralCA|^LensProfileEnable/, 'lens / geometry corrections'],
   [/^RetouchInfo$/, 'spot removal'],
 ];
 
@@ -45,10 +45,11 @@ const truthy = (x) => x === true || /^true$/i.test(String(x));
 /** Merge a parametric curve (shadows / darks / lights / highlights) into a point curve. */
 function foldParametric(points, par) {
   const [sh, da, li, hi] = par.amounts, [s1, s2, s3] = par.splits;
-  const bump = (x, a, b) => Math.max(0, 1 - Math.abs(x - (a + b) / 2) / ((b - a) / 2 + 0.0001));
+  // regions overlap widely, as in Lightroom (Darks reaches into the deep shadows, Lights into the highlights); fitted to Lightroom Classic
+  const bump = (x, lo, pk, hi) => Math.max(0, x < pk ? (x - lo) / (pk - lo + 1e-4) : (hi - x) / (hi - pk + 1e-4));
   const para = (x) => {
-    const r = [bump(x, 0, s2 * 0.6 + s1 * 0.4 + 0.0001), bump(x, s1 * 0.5, (s1 + s3) / 2 + 0.2 * (s2 - s1)), bump(x, (s1 + s3) / 2 - 0.2 * (s3 - s2), s3 + (1 - s3) * 0.5), bump(x, s3, 1.0001)];
-    return x + 0.25 * (sh * r[0] + da * r[1] + li * r[2] + hi * r[3]) / 100;
+    const r = [bump(x, 0, s1 * 0.8, s2), bump(x, 0, (s1 + s2) / 2, s3), bump(x, s1, (s2 + s3) / 2, 1), bump(x, s2, s3 + (1 - s3) * 0.6, 1)];
+    return x + (0.17 * sh * r[0] + 0.35 * da * r[1] + 0.35 * li * r[2] + 0.17 * hi * r[3]) / 100;
   };
   const xs = []; for (let i = 0; i <= 16; i++) xs.push(i / 16);
   let ys = xs.map((x) => evalCurve(points, clampTo(para(x), 0, 1)));
@@ -107,6 +108,12 @@ export function crsToPatch(map) {
     curves.rgb = foldParametric(curves.rgb || [[0, 0], [1, 1]], { amounts: pv, splits: sp });
   }
   if (Object.keys(curves).length) patch.curves = curves;
+  // custom white balance (RAW): absolute Kelvin + tint. The tint is turned into our as-shot-relative tint once the photo is known.
+  const K = num(map.Temperature);
+  if (K !== undefined && !/^as shot$/i.test(String(map.WhiteBalance ?? 'Custom'))) {
+    patch.wbK = clampTo(Math.round(K / 50) * 50, 2000, 50000);
+    const t = num(map.Tint); if (t !== undefined) patch.wbTintAbs = clampTo(t, -150, 150);
+  }
   return { patch, ignored: [...ignored] };
 }
 
@@ -218,6 +225,7 @@ export function toXmp(name, params, { group = '' } = {}) {
     if (params.bw) { const v = params[`hsl_${b}_lum`]; if (v) add('GrayMixer' + B, signed(v, 0)); }
   });
   if (params.bw) add('ConvertToGrayscale', 'True');
+  if (params.wbK) { add('WhiteBalance', 'Custom'); add('Temperature', String(params.wbK)); if (params.wbTintAbs !== undefined) add('Tint', signed(Math.round(params.wbTintAbs), 0)); }
   for (const [Z, z] of [['Shadow', 'shadow'], ['Midtone', 'mid'], ['Highlight', 'high'], ['Global', 'global']]) {
     for (const [crs, kind] of [['Hue', 'hue'], ['Sat', 'sat'], ['Lum', 'lum']]) {
       const v = params[`grade_${z}_${kind}`];

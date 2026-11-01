@@ -1,5 +1,6 @@
 import LibRaw from 'libraw-wasm';
 import { extractExif, parseExif } from './exif.js';
+import { CAM_MATRICES } from './cammatrix.js';
 
 // Longest edge of the editing proxy. Keeps the GPU texture ~50MB (RGBA16F) so iOS Safari stays happy.
 export const MAX_PROXY = 3200;
@@ -36,11 +37,34 @@ const lutSrgb8 = (() => {
 
 export const ONE = toHalf(1);
 
+/** Fujifilm RAF: the raw exposure bias (EV) the camera stores in the RAF header (tag 0x9650), or null. Lightroom brightens by it. */
+export function rafExposureBias(bytes) {
+  try {
+    if (bytes.length < 100 || String.fromCharCode(...bytes.subarray(0, 8)) !== 'FUJIFILM') return null;
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const off = dv.getUint32(92), len = dv.getUint32(96);
+    if (!off || off + 4 > bytes.length) return null;
+    const n = dv.getUint32(off), end = Math.min(bytes.length, off + len);
+    let p = off + 4;
+    for (let i = 0; i < n && p + 4 <= end; i++) {
+      const tag = dv.getUint16(p), size = dv.getUint16(p + 2);
+      if (tag === 0x9650 && size >= 4) { const num = dv.getInt16(p + 4), den = dv.getUint16(p + 6); return den ? num / den : null; }
+      p += 4 + size;
+    }
+  } catch { /* not a readable RAF header */ }
+  return null;
+}
+
 /** The camera's colour data needed for Kelvin white balance, or null. */
 function wbFromMeta(meta) {
   const cd = meta.color_data || {};
   return cd.cam_mul && cd.cam_mul[1] > 0 && cd.cam_xyz && cd.rgb_cam
-    ? { camMul: cd.cam_mul.slice(0, 3), camXyz: cd.cam_xyz.slice(0, 3).map((r) => r.slice(0, 3)), rgbCam: cd.rgb_cam.slice(0, 3).map((r) => r.slice(0, 3)) } : null;
+    ? { camMul: cd.cam_mul.slice(0, 3), camXyz: cd.cam_xyz.slice(0, 3).map((r) => r.slice(0, 3)), rgbCam: cd.rgb_cam.slice(0, 3).map((r) => r.slice(0, 3)), ...camMatrices(meta) } : null;
+}
+/** Tungsten + daylight matrices for Lightroom-exact white balance, when the camera is in the table. */
+function camMatrices(meta) {
+  const m = CAM_MATRICES[`${meta.camera_make || ''} ${meta.camera_model || ''}`.trim()];
+  return m ? { cmA: m[0], cmD: m[1], fmA: m[2] || null, fmD: m[3] || null } : {};
 }
 export const isRaw = (file) => RAW_EXT.test(file.name);
 
@@ -77,6 +101,7 @@ export async function loadImage(file, onStatus = () => {}) {
         info: {
           kind: 'RAW',
           camera: `${meta.camera_make || ''} ${meta.camera_model || ''}`.trim(),
+          rawBias: rafExposureBias(bytes),
           source: `${meta.width}×${meta.height}`,
           decodeMs,
           exifSeg: exifInfo, exif: parseExif(exifInfo), wb: wbInfo,
@@ -193,7 +218,7 @@ export async function loadFull(file, { quality = 1, maxDim = 16384, outputColor 
         try { const m = await raw.metadata(true); camera = `${m.camera_make || ''} ${m.camera_model || ''}`.trim(); wb = wbFromMeta(m); } catch {}
         try { const t = await raw.thumbnailData(); if (t && t.format === 'jpeg') exifSeg = extractExif(t.data); } catch {}
         const d = await raw.imageData();
-        return { kind: 'raw', rgb16: d.data, width: d.width, height: d.height, colors: d.colors || 3, exifSeg, camera, wb, reduced: half };
+        return { kind: 'raw', rgb16: d.data, width: d.width, height: d.height, colors: d.colors || 3, exifSeg, camera, wb, rawBias: rafExposureBias(bytes), reduced: half };
       } finally { raw.dispose(); }
     };
     try {

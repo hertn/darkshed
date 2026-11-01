@@ -30,8 +30,10 @@ export function slider(o) {
   let value = o.value ?? def;
   let custom = null;
   const pct = (v) => ((v - min) / (max - min)) * 100;
-  function paint() {
-    rng.value = value; val.value = fmt(value);
+  // keepThumb: leave the thumb where the finger is (snapped units such as Kelvin in 50s would otherwise pull it back and forth)
+  function paint(keepThumb = false) {
+    if (!keepThumb) rng.value = value;
+    val.value = fmt(value);
     el.classList.toggle('mod', value !== def);
     const css = custom || TRACKS[o.track];
     if (css) { rng.style.setProperty('--tr', css); return; }
@@ -46,7 +48,7 @@ export function slider(o) {
   let resetHold = false;
   rng.addEventListener('input', () => {
     if (resetHold) { rng.value = value; return; }
-    value = clamp(+rng.value); paint(); o.onInput?.(value);
+    value = clamp(+rng.value); paint(true); o.onInput?.(value);
   });
   rng.addEventListener('change', () => { if (resetHold) rng.value = value; o.onChange?.(value); });
   // show that the thumb is held (a finger covers it, so the label and value light up too)
@@ -74,11 +76,13 @@ export function slider(o) {
     if (Number.isFinite(n) && clamp(n) !== value) { value = clamp(n); paint(); o.onInput?.(value); o.onChange?.(value); } else paint();
   });
   paint();
-  return { el, def, set(v) { value = v; paint(); }, get: () => value, setTrack(css) { custom = css; paint(); },
+  return { el, def, set(v) { value = v; paint(!!snap && snap(Math.min(max, Math.max(min, +rng.value))) === v); }, get: () => value, setTrack(css) { custom = css; paint(); },
     /** Show the value in other units (e.g. Kelvin): format(v) -> text, parse(text) -> v. Call with no arguments to go back to plain numbers. */
     setUnits(u) {
       fmt = u?.format || plain; parse = u?.parse || ((t) => parseFloat(t.replace('+', ''))); snap = u?.snap || null;
       step = u?.step ?? o.step; def = u?.def ?? o.def; min = u?.range ? u.range[0] : o.min; max = u?.range ? u.range[1] : o.max;
-      rng.min = min; rng.max = max; rng.step = step; paint();
+      // only touch the range when something changed: this runs on every tick while the Temp slider is dragged
+      if (+rng.min !== min || +rng.max !== max || +rng.step !== step) { rng.min = min; rng.max = max; rng.step = step; paint(); }
+      else paint(!!snap && snap(Math.min(max, Math.max(min, +rng.value))) === value);
     } };
 }

@@ -2,6 +2,7 @@
 // so the picture takes on the camera maker's own look. Works for any camera, with no profile database.
 import LibRaw from 'libraw-wasm';
 import { TUNE, rawCamStops } from './tuning.js';
+import { rafExposureBias } from './decode.js';
 
 const K = 17;                      // knots over 0..1, red / green / blue, same layout as the per-camera curves in tuning.js
 const SAMPLES = 40000;
@@ -58,7 +59,8 @@ function channelKnots(ours, theirs) {
 async function fitFile(file) {
   const raw = new LibRaw();
   try {
-    await raw.open(new Uint8Array(await file.arrayBuffer()), { halfSize: true, useCameraWb: true, outputBps: 16, outputColor: 1, noAutoBright: true, gamm: [1, 1], userQual: 0, highlight: 0 });
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    await raw.open(bytes, { halfSize: true, useCameraWb: true, outputBps: 16, outputColor: 1, noAutoBright: true, gamm: [1, 1], userQual: 0, highlight: 0 });
     const meta = await raw.metadata(true);
     const camera = `${meta.camera_make || ''} ${meta.camera_model || ''}`.trim();
     const t = await raw.thumbnailData();
@@ -69,7 +71,7 @@ async function fitFile(file) {
     const cv = document.createElement('canvas'); cv.width = sw; cv.height = sh;
     const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(bmp, 0, 0, sw, sh);
     const cam = cx.getImageData(0, 0, sw, sh).data;
-    const off = Math.pow(2, rawCamStops(camera)), ch = d.colors || 3;
+    const off = Math.pow(2, rawCamStops(camera, rafExposureBias(bytes))), ch = d.colors || 3;
     const n = d.width * d.height, step = Math.max(1, Math.floor(n / SAMPLES));
     const ours = [[], [], []], theirs = [[], [], []];
     for (let p = 0; p < n; p += step) for (let c = 0; c < 3; c++) ours[c].push(baseEnc(d.data[p * ch + c] / 65535 * off, c));

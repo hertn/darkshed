@@ -6,6 +6,7 @@ import { ALL_PARAMS } from './params.js';
 import { parsePresetText } from './lrpreset.js';
 import { unzip } from './zip.js';
 import { validPreset } from './merge.js';
+import { asShot } from './wb.js';
 
 // Keys a "look" owns. Applying a look resets these, then applies its patch; exposure, white balance and detail stay yours.
 const KEEP = new Set(['exposure', 'temp', 'tint', 'wbK', 'sharpAmount', 'sharpRadius', 'sharpMasking', 'nrLuma', 'nrColor', 'caRemove', 'defringePurple', 'defringeGreen', 'caRed', 'caBlue', 'distortion', 'lensVignette']);
@@ -31,36 +32,46 @@ export function snapshotLook(params) {
 const S = (a) => a;       // readability
 export const BUILTIN = [
   { name: 'Provia', patch: { contrast: 11, vibrance: 8, saturation: 4 } },
-  { name: 'Velvia', patch: { contrast: 40, saturation: 26, vibrance: 12, shadows: -8, blacks: -12, whites: 6, clarity: 6, hsl_green_sat: 12, hsl_blue_sat: 14, hsl_red_sat: 8 } },
+  { name: 'Velvia', patch: { contrast: 22, saturation: 26, vibrance: 12, shadows: -4, blacks: -6, whites: 0, clarity: 6, hsl_green_sat: 12, hsl_blue_sat: 14, hsl_red_sat: 8 } },
   { name: 'Astia', patch: { contrast: -11, saturation: 6, highlights: -18, shadows: 10, clarity: -4, hsl_orange_lum: 8, hsl_orange_sat: -6, hsl_blue_sat: 6 } },
-  { name: 'Classic Chrome', patch: { contrast: 29, saturation: -22, vibrance: -4, highlights: -14, shadows: 6, blacks: 12, hsl_red_sat: -10, hsl_green_sat: -20, hsl_blue_sat: -18, hsl_blue_lum: -14,
-      grade_shadow_hue: 215, grade_shadow_sat: 13, grade_high_hue: 42, grade_high_sat: 9,
+  { name: 'Classic Chrome', patch: { contrast: 15, saturation: -22, vibrance: -4, highlights: -14, shadows: 6, blacks: 12, hsl_red_sat: -10, hsl_green_sat: -20, hsl_blue_sat: -18, hsl_blue_lum: -14,
+      grade_shadow_hue: 215, grade_shadow_sat: 6, grade_high_hue: 42, grade_high_sat: 9,
       curves: { rgb: S([[0, 0.04], [0.25, 0.2], [0.75, 0.8], [1, 0.98]]) } } },
   { name: 'Classic Neg', patch: { contrast: 36, saturation: -6, blacks: 10, highlights: -8, grainAmount: 14, grainSize: 30, hsl_green_hue: -12, hsl_blue_sat: -8,
       grade_shadow_hue: 175, grade_shadow_sat: 23, grade_mid_hue: 28, grade_mid_sat: 8, grade_high_hue: 48, grade_high_sat: 21,
       curves: { rgb: S([[0, 0.03], [0.3, 0.26], [0.7, 0.76], [1, 1]]) } } },
   { name: 'Pro Neg Std', patch: { contrast: -15, saturation: -6, highlights: -12, shadows: 8 } },
   { name: 'Pro Neg Hi', patch: { contrast: 25, saturation: 6, highlights: -8 } },
-  { name: 'Eterna', patch: { contrast: -36, saturation: -14, highlights: -24, shadows: 20, blacks: 8, grade_shadow_hue: 190, grade_shadow_sat: 15,
-      curves: { rgb: S([[0, 0.05], [0.5, 0.5], [1, 0.95]]) } } },
+  { name: 'Eterna', patch: { contrast: -30, saturation: -14, highlights: -8, shadows: 6, blacks: 4, grade_shadow_hue: 190, grade_shadow_sat: 10,
+      curves: { rgb: S([[0, 0.04], [0.5, 0.5], [1, 0.97]]) } } },
   { name: 'Nostalgic Neg', patch: { contrast: 22, saturation: 6, blacks: 14, highlights: -10, grainAmount: 10, hsl_blue_sat: -14, hsl_orange_sat: 10,
       grade_shadow_hue: 30, grade_shadow_sat: 19, grade_high_hue: 42, grade_high_sat: 26, grade_global_hue: 30, grade_global_sat: 6 } },
-  { name: 'Acros', patch: { bw: 1, contrast: 44, blacks: -14, whites: 8, clarity: 12, grainAmount: 24, grainSize: 28, grainRoughness: 55,
+  { name: 'Acros', patch: { bw: 1, contrast: 24, blacks: -6, whites: 0, clarity: 12, grainAmount: 24, grainSize: 28, grainRoughness: 55,
       hsl_red_lum: 18, hsl_orange_lum: 12, hsl_yellow_lum: 8, hsl_green_lum: 6, hsl_blue_lum: -26 } },
-  { name: 'Acros + R', patch: { bw: 1, contrast: 51, blacks: -16, whites: 8, clarity: 14, grainAmount: 24, grainSize: 28, grainRoughness: 55,
+  { name: 'Acros + R', patch: { bw: 1, contrast: 30, blacks: -8, whites: 0, clarity: 14, grainAmount: 24, grainSize: 28, grainRoughness: 55,
       hsl_red_lum: 45, hsl_orange_lum: 30, hsl_yellow_lum: 15, hsl_green_lum: -10, hsl_aqua_lum: -25, hsl_blue_lum: -50 } },
   { name: 'Sepia', patch: { bw: 1, contrast: 15, blacks: 6, grade_global_hue: 35, grade_global_sat: 28, grade_shadow_hue: 28, grade_shadow_sat: 19 } },
   { name: 'Faded', patch: { contrast: -22, saturation: -12, blacks: 26, highlights: -10, curves: { rgb: S([[0, 0.08], [0.5, 0.5], [1, 0.96]]) } } },
 ];
 
 /** Apply a stored preset. 'merge' presets (Lightroom imports) change only the settings they list; others replace the whole look. */
-export function applyPreset(params, preset, profile = '') {
+export function applyPreset(params, preset, profile = '', wb = null) {
   if (preset.mode === 'merge') {
     for (const [k, v] of Object.entries(preset.patch)) {
       if (k === 'curves') { params.curves = { ...params.curves }; for (const [ch, pts] of Object.entries(v)) params.curves[ch] = clone(pts); }
       else params[k] = v;
     }
   } else applyLook(params, preset.patch, profile);
+  resolveWb(params, wb);
+}
+
+/** Lightroom presets carry an absolute tint (wbTintAbs); ours is relative to the photo's as-shot tint. Without RAW colour data
+ *  (a JPEG) there is nothing to be relative to, so the custom white balance is left out. */
+export function resolveWb(params, wb) {
+  if (params.wbTintAbs === undefined) return;
+  if (wb) params.tint = Math.max(-100, Math.min(100, Math.round(params.wbTintAbs - asShot(wb).tint)));
+  else params.wbK = 0;
+  delete params.wbTintAbs;
 }
 
 const RANGE = Object.fromEntries(ALL_PARAMS.map((p) => [p[0], [p[2], p[3], p[4]]]));
@@ -137,7 +148,7 @@ export async function importPresetFiles(files) {
 }
 
 /** Apply a stored preset to a copy of params -> params (used for thumbnails and exports). */
-export function previewParams(base, preset, profile = '') { const p = clone(base); applyPreset(p, preset, profile); return p; }
+export function previewParams(base, preset, profile = '', wb = null) { const p = clone(base); applyPreset(p, preset, profile, wb); return p; }
 
 /** Apply a Profile dropdown value: '' (default), 'b:<name>' built-in look or 'l:<id>' LUT. */
 export function applyProfile(params, value) {

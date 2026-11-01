@@ -18,9 +18,14 @@ export function rawCamCurve(camera) {
   for (const [re, v] of RAW_CAM_CURVES) if (re.test(camera || '')) return v;
   return null;
 }
-export function rawCamStops(camera) {
-  for (const [re, v] of RAW_CAM_STOPS) if (re.test(camera || '')) return v;
-  return RAW_CAM_DEFAULT;
+/** Fujifilm files carry their own exposure bias (rafExposureBias). The base curve was fitted on an X-T3 file at -1.72 EV; measured against
+ *  Lightroom Classic, a file 1 EV lower needs about 0.7 stops more (DR modes untested, so the same rate is assumed). */
+export const FUJI_REF_BIAS = -1.72, FUJI_BIAS_RATE = 0.7;
+export function rawCamStops(camera, rawBias = null) {
+  let v = RAW_CAM_DEFAULT;
+  for (const [re, s] of RAW_CAM_STOPS) if (re.test(camera || '')) { v = s; break; }
+  if (rawBias != null && /fuji/i.test(camera || '')) v += FUJI_BIAS_RATE * (FUJI_REF_BIAS - rawBias);
+  return v;
 }
 
 export const TUNE = {
@@ -32,14 +37,25 @@ export const TUNE = {
   grdK: 0.35,    // colour grading strength
   exK: 1.37,      // exposure: stops per unit
   ctK: 0.98,      // contrast strength
-  shK: 2.35,      // stops of shadow lift at +100
+  shK: 1.75,      // stops of shadow lift at +100 (RAW; a gain on the region, so local contrast survives; 2.5 fitted the preview but overshot real exports)
   shHi: 0.50,     // brightness (0..1) where the shadows slider stops acting
-  shLift: 0.015, // extra linear lift for the deepest shadows
-  whK: 0.23,      // whites: how far the white point moves at +100
+  shLift: 0,     // extra linear lift for the deepest shadows (was 0.015 before the tone map mask; it flattened contrast)
+  // JPEG / non-RAW files: measured on Lightroom Classic, Shadows and Highlights there reach across the whole tonal range
+  // (Shadows +-100 moves mid-grey by about 1.5 stops, Highlights -100 pulls everything from the midtones up by ~0.9 stops).
+  jpShK: 1.5, jpShHi: 1.05, jpHlK: 0.95, jpHlKneg: 0.9, jpHlLo: -0.25, jpHlTop: 0.75,
+  whK: 0.13,      // whites: how far the white point moves at +100 (RAW; re-measured on Lightroom Classic)
+  jpWhK: 0.23,    // ... on JPEGs
   blK: 0.17,     // blacks: how far the black point moves at +100
   vbK: 0.91,     // vibrance strength
   saK: 1.0,      // saturation strength
-  hsC: [-14, 24.4, 45.1, 100.4, 169.1, 229.8, 287.6, 337.9], // hue centre of each HSL band
+  calHueK: [0.4, 0.4, 0.8],   // calibration hue: how far each primary turns at 100
+  calSatK: [1.8, 0.6, 3.0],   // calibration saturation per primary (Lightroom's red and blue act much harder than green)
+  calShR: 0.5, calShK: 0.8,   // calibration shadows tint (RAW only, as in Lightroom): brightness range and strength
+  wbMix: 0.5,     // RAW white balance: 0 = forward-matrix model, 1 = camera-space rescale; the even blend fits Lightroom Classic best
+  hsC: [-14, 24.4, 45.1, 100.4, 169.1, 229.8, 265, 337.9],   // hue centre of each HSL band (purple measured lower on Lightroom Classic)
+  hsHb: [0.5, 0.5, 0.7, 1.0, 0.35, 1.0, 0.8, 0.3],           // per-band hue strength, fitted to Lightroom's shift per band on a colour chart
+  hsSneg: 2.0,     // negative saturation acts this much harder (Lightroom -100 nearly removes the colour)
+  hsLc: 0.35,      // luminance down makes colours richer (and up paler), as in Lightroom
   hsH: 64.2,       // degrees of hue shift at 100
   hsS: 0.52,      // HSL saturation strength
   hsL: 0.39,      // HSL luminance strength
@@ -55,16 +71,23 @@ export const TUNE = {
   wbA: 0.56,     // ... starting at this brightness
   satLin: 1.0,   // vibrance / saturation work in linear light (1) or on the encoded values (0)
   knee: 0.133,    // exposure roll-off into the highlights starts at this linear brightness
-  ctP: 1.4,      // contrast pivot warp (1 = mid-grey)
+  ctP: 1.15,     // contrast pivot warp (1 = mid-grey; re-measured on Lightroom Classic)
   ppExp: 1,      // exposure and its highlight roll-off in ProPhoto (1) or sRGB (0)
   ppCurve: 1,    // tone curves per channel in ProPhoto primaries (1) or sRGB (0)
   rawExK: 0.96,  // RAW files: stops per exposure unit (Lightroom's RAW exposure is 1:1)
   rawX0: -11,    // RAW base tone curve: log2 of the linear value at the first knot, then every rawDx stops
   rawDx: 0.5,
-  rawHlPos: 1.12,  // RAW highlights: strength at +100 / -100 (Lightroom: about +1 stop / -0.9 stop in the top half)
-  rawHlNeg: 1.06,
+  rawHlPos: 0.8,   // RAW highlights: strength at +100 / -100 (+ re-measured on Lightroom Classic: it lifted the midtones too much)
+  rawHlNeg: 0.5,   // re-fitted with the tone map mask on 10 Lightroom Classic edits + the -100 single-slider export (was 1.06)
   rawHlNarrow: 1.5, // RAW highlights: brightness is scaled by this before the mask at small amounts, so only the top tones react ...
   rawHlWide: 2.5,    // ... and by this at +100 / -100 (above 1 reaches further down than the measured fit)
+  // tone map mask (src/tonemask.js): Highlights / Shadows follow the brightness of the region, as in Lightroom
+  tmAmt: 1,      // 0 = per pixel (old global behaviour), 1 = fully regional (fits Lightroom Classic best, RAW and JPEG)
+  tmGrid: 96,    // mask cells on the long edge
+  tmSigS: 1.5,   // mask smoothing: spatial sigma in cells ...
+  tmSigR: 1.5,   // ... and range sigma in stops (Lightroom picks about 1.4 - 2.5 from the photo's dynamic range)
+  tmIter: 2,
+  tmUp: 1.0,     // upsampling: how far (stops) a pixel may differ from a cell and still take its value
   rawWbL: 1,     // RAW white balance keeps the brightness (1 = fully)
   rawBase: [0.0022, 0.0022, 0.0019, 0.0025, 0.0025, 0.0022, 0.0029, 0.0029, 0.0025, 0.0035, 0.0035, 0.0029, 0.0045, 0.0045, 0.0036, 0.0063, 0.0062, 0.0054, 0.0096, 0.0093, 0.0093, 0.0147, 0.0143, 0.0149, 0.0222, 0.0219, 0.0223, 0.0334, 0.0329, 0.0325, 0.0493, 0.0483, 0.0475, 0.0721, 0.0706, 0.0705, 0.106, 0.1039, 0.1046, 0.1545, 0.1514, 0.1527, 0.2171, 0.2144, 0.2162, 0.2873, 0.2886, 0.2843, 0.3621, 0.3651, 0.366, 0.4805, 0.4777, 0.4723, 0.6145, 0.6127, 0.6095, 0.7512, 0.7465, 0.7636, 0.9054, 0.9088, 0.9001, 0.9468, 0.9487, 0.9438, 0.9764, 0.9772, 0.975, 0.9941, 0.9943, 0.9938, 1, 1, 1],   // encoded value (0..1) per knot, red / green / blue
   hlTop: 0.998,  // brightness where the highlights slider fades out again (white stays white)
