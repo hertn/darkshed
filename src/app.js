@@ -1,7 +1,7 @@
 // Central app state: library, per-photo edit state, undo history, event bus.
 import { defaults, defaultCrop, clone, identityCurves, KEY_DEFAULT, migrateMask } from './params.js';
 import { idb } from './store.js';
-import { paramGains } from './wb.js';
+import { paramGains, needsGains, profileWeight } from './wb.js';
 
 const listeners = {};
 export const bus = {
@@ -153,5 +153,5 @@ export function renderState(it) {
     }
   }
   const masks = it.masks.filter((m) => m.enabled !== false);
-  return { p, masks, wbGain: it.wb && !p.temp && (p.wbK || p.tint) ? paramGains(it.wb, p) : null, camera: it.camera || '', rawBias: it.rawBias ?? null, camFit: it.camFit || null, raw: /\.(raf|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|x3f|raw|3fr|iiq|erf|mrw|kdc|dcr|fff)$/i.test(it.file?.name || '') };
+  return { p, masks, wbGain: needsGains(it.wb, p) ? paramGains(it.wb, p) : null, dcpW: it.wb ? profileWeight(it.wb) : 0.5, camera: it.camera || '', rawBias: it.rawBias ?? null, camFit: it.camFit || null, raw: /\.(raf|cr2|cr3|nef|arw|dng|orf|rw2|pef|srw|x3f|raw|3fr|iiq|erf|mrw|kdc|dcr|fff)$/i.test(it.file?.name || '') };
 }

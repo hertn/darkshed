@@ -7,7 +7,7 @@ import { patchExif, injectExif } from './exif.js';
 import { getLut } from './looks.js';
 import { zip } from './zip.js';
 import { ensureCamFit } from './camfit.js';
-import { paramGains } from './wb.js';
+import { paramGains, needsGains, profileWeight } from './wb.js';
 import { patchImage, accessRgb16, accessRgba8 } from './spots.js';
 import { maskFromRgb16, maskFromBitmap } from './tonemask.js';
 import { displayP3Profile, injectIccJpeg, injectIccPng } from './icc.js';
@@ -50,7 +50,8 @@ export async function renderPhoto(item, opts, onProgress = () => {}, signal) {
     const st = renderState(item);
     if (full.camera) st.camera = full.camera;
     if (full.rawBias != null) st.rawBias = full.rawBias;
-    if (full.wb && !st.p.temp && (st.p.wbK || st.p.tint)) st.wbGain = paramGains(full.wb, st.p);
+    if (needsGains(full.wb, st.p)) st.wbGain = paramGains(full.wb, st.p);
+    if (full.wb) st.dcpW = profileWeight(full.wb);
     const geo = makeGeo(item.crop, A, false);
     er.setGeometry(geo);
 

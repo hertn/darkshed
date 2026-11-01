@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.14
+- RAW colours are closer to Lightroom: every RAW file now gets DarkShed's own colour table, a gentle hue and saturation correction that depends on the colour and its brightness (for example reds, skin tones and blues come out the way Lightroom renders them). It was fitted by rendering test colour charts in DarkShed and in Lightroom Classic and measuring the difference; it contains no Adobe data. Works for every camera automatically, with a tungsten and a daylight version blended by the photo's light. Measured on 10 real Lightroom edits: the typical colour difference dropped from 6.0 to 5.3 (average 8.2 to 7.6); on the test charts from 5.2-6.6 to 5.0. Camera Matching is unchanged (it fits the camera's own JPEG instead).
+
 ## 0.9.13
 - Shadows and Highlights now work the way Lightroom's do: how much a spot is lifted or darkened depends on the area around it, not on that one pixel. Detail inside dark or bright areas keeps its contrast instead of going flat, and a lit face in a dark scene gets the same lift as the scene around it. Checked against Lightroom Classic exports of 10 real edits plus single-slider tests: the typical colour difference dropped by about a quarter (median 6.5 to 5.0), better or equal on all but one photo.
 - Highlights pulled down (minus) is gentler, matching Lightroom (it used to darken bright areas much more).

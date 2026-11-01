@@ -6,6 +6,7 @@
 
 import { HSL_BANDS, GRADE_ZONES, MAX_MASKS, MAX_BRUSH_MASKS, MAX_COMPS, identityCurves } from './params.js';
 import { TUNE, BASE_LOOKS, rawCamStops, rawCamCurve } from './tuning.js';
+import { COLOR_TABLE_DATA, blendTable } from './dcp.js';
 import { maskFromHalf } from './tonemask.js';
 const colMajor = (k) => [k[0], k[3], k[6], k[1], k[4], k[7], k[2], k[5], k[8]];   // rows -> GL's column order
 import { evalCurve, curvesActive, curveIsIdentity } from './curves-math.js';
@@ -245,12 +246,43 @@ float tmRatio(vec2 uv, float lp) {
   }
   return exp2(clamp(uTmP.x * (acc / ws - lp), -10.0, 10.0));
 }
+// RAW colour table (src/dcp.js): texel x = saturation division, y = brightness division * hue divisions + hue division
+uniform sampler2D uHsm; uniform vec3 uHsmD; uniform float uDcp;
+uniform vec2 uHsmV;         // brightness axis: log2 range (lo < hi), or linear 0..1 when lo >= hi
+vec3 hsv6(vec3 c) {
+  float mx = max(c.r, max(c.g, c.b)), gap = mx - min(c.r, min(c.g, c.b)), h = 0.0, s = 0.0;
+  if (gap > 0.0) { s = gap / mx; if (c.r == mx) { h = (c.g - c.b) / gap; if (h < 0.0) h += 6.0; } else if (c.g == mx) h = 2.0 + (c.b - c.r) / gap; else h = 4.0 + (c.r - c.g) / gap; }
+  return vec3(h, s, mx);
+}
+vec3 rgb6(vec3 x) {
+  float h = mod(x.x, 6.0), s = x.y, v = x.z;
+  if (s <= 0.0) return vec3(v);
+  int i = int(floor(h)); float f = h - float(i), p = v * (1.0 - s), q = v * (1.0 - s * f), t = v * (1.0 - s * (1.0 - f));
+  if (i == 0) return vec3(v, t, p); if (i == 1) return vec3(q, v, p); if (i == 2) return vec3(p, v, t);
+  if (i == 3) return vec3(p, q, v); if (i == 4) return vec3(t, p, v); return vec3(v, p, q);
+}
+vec3 dcpTap(sampler2D t, vec3 D, int h, int s, int v) { return texelFetch(t, ivec2(s, v * int(D.x) + h), 0).rgb; }
+vec3 dcpApply(vec3 pp, sampler2D t, vec3 D, vec2 VL) {   // pp: linear ProPhoto
+  vec3 x = hsv6(max(pp, 0.0));
+  if (x.z <= 0.0) return pp;
+  int H = int(D.x);
+  float hS = x.x * D.x / 6.0; int h0 = int(floor(hS)); float hf = hS - float(h0); h0 = h0 % H; int h1 = (h0 + 1) % H;
+  float sS = clamp(x.y * (D.y - 1.0), 0.0, D.y - 1.0001); int s0 = int(sS); float sf = sS - float(s0);
+  float vn = VL.y > VL.x ? (log2(max(x.z, 1e-8)) - VL.x) / (VL.y - VL.x) : min(x.z, 1.0);
+  float vS = D.z > 1.5 ? clamp(vn * (D.z - 1.0), 0.0, D.z - 1.0001) : 0.0; int v0 = int(vS); float vf = vS - float(v0); int v1 = D.z > 1.5 ? v0 + 1 : v0;
+  vec3 a = mix(mix(dcpTap(t, D, h0, s0, v0), dcpTap(t, D, h0, s0 + 1, v0), sf), mix(dcpTap(t, D, h1, s0, v0), dcpTap(t, D, h1, s0 + 1, v0), sf), hf);
+  vec3 b = mix(mix(dcpTap(t, D, h0, s0, v1), dcpTap(t, D, h0, s0 + 1, v1), sf), mix(dcpTap(t, D, h1, s0, v1), dcpTap(t, D, h1, s0 + 1, v1), sf), hf);
+  vec3 m = mix(a, b, vf);
+  x.x += m.x / 60.0; x.y = min(x.y * m.y, 1.0); x.z *= m.z;
+  return rgb6(x);
+}
 // linear-light part of an adjustment set: white balance, exposure (+ highlight shoulder), shadows / highlights
 vec3 toneLin(vec3 c, vec4 A, vec4 B, float glob) {
   float wf = 1.0 - uWf.x * smoothstep(uWf.y, 1.0, luma(enc(c)));
   mat3 wt = (glob * uWbOn > 0.5) ? mat3(1.0) + (uWbG - mat3(1.0)) * wf : wbMat(uWmT, B.z * 4.0 * wf);
   mat3 wm = (glob * uWbOn > 0.5) ? wt : wt * wbMat(uWmN, B.w * 5.0 * wf);   // RAW in Kelvin: tint is part of the gains
   wm /= mix(1.0, luma(wm * vec3(1.0)), (!uRawOn && B.z < 0.0) ? 1.0 : uMk.y);   // JPEG: cooling keeps its brightness, as in Lightroom
+  if (glob > 0.5 && uRawOn && uDcp > 0.5) c = max(FROMPP * dcpApply(max(TOPP * c, 0.0), uHsm, uHsmD, uHsmV), 0.0);   // colour table, on the as-shot colours
   c = wm * c;
   if (uPPe > 0.5) c = TOPP * c;                        // exposure and its highlight roll-off work in ProPhoto, as in Lightroom
   float ex = A.x * uTn2.x;
@@ -736,6 +768,23 @@ export class Renderer {
     this.tmTex = null; this.setToneMask(null);
   }
 
+  /** RAW colour table for this render (src/dcp.js), on texture unit 5. Off for Camera Matching, which fits the camera's JPEG itself. */
+  bindDcp(p, state) {
+    const gl = this.gl, on = state.raw && TUNE.colorTable && (state.p?.baseProfile || '') !== 'camera';
+    const mk = (w, h, data) => { const t = Renderer.tex2d(gl, w, h, gl.RGB32F, gl.RGB, gl.FLOAT, data); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); return t; };
+    if (!this.dcpDummy) this.dcpDummy = mk(1, 1, new Float32Array([0, 1, 1]));
+    const d = COLOR_TABLE_DATA;
+    if (on) {
+      const t = blendTable(state.dcpW ?? 0.5);
+      if (this.hsmSrc !== t) { if (this.hsmTex) gl.deleteTexture(this.hsmTex); const [H, S, V] = d.dims; this.hsmTex = mk(S, H * V, t); this.hsmSrc = t; }
+    }
+    gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, on ? this.hsmTex : this.dcpDummy);
+    gl.uniform1i(p.u('uHsm'), 5);
+    gl.uniform3f(p.u('uHsmD'), ...(on ? d.dims : [1, 1, 1]));
+    gl.uniform1f(p.u('uDcp'), on ? 1 : 0);
+    gl.uniform2f(p.u('uHsmV'), ...d.vlog);
+  }
+
   /** Tone map mask ({ w, h, data: Float32Array log2 brightness }, src/tonemask.js); null = none (per-pixel Highlights / Shadows). */
   setToneMask(m) {
     const gl = this.gl;
@@ -993,6 +1042,7 @@ export class Renderer {
     gl.uniform1i(p.u('uTm'), 4);
     gl.uniform2f(p.u('uTmSize'), this.tm ? this.tm.w : 1, this.tm ? this.tm.h : 1);
     gl.uniform2f(p.u('uTmP'), this.tm ? TUNE.tmAmt : 0, TUNE.tmUp);
+    this.bindDcp(p, state);
     const o = region?.tex || { origin: [0, 0], size: [this.imgW, this.imgH] };
     gl.uniform2f(p.u('uImgPx'), region?.imgW || this.imgW, region?.imgH || this.imgH);
     gl.uniform4f(p.u('uRegion'), reg.x, reg.y, reg.w, reg.h);
@@ -1289,7 +1339,7 @@ export class Renderer {
     this.tex = this.smallTex;
     for (const st of states) {
       if (st.lut) this.setLut(st.lut);
-      this.passEdit({ p: st.p, masks: [], raw: st.raw, camera: st.camera, rawBias: st.rawBias, camFit: st.camFit, wbGain: st.wbGain }, false, this.thumbFbo, { x: 0, y: 0, w, h, imgW: w, imgH: h, tex: { origin: [0, 0], size: [w, h] } });
+      this.passEdit({ p: st.p, masks: [], raw: st.raw, camera: st.camera, rawBias: st.rawBias, camFit: st.camFit, wbGain: st.wbGain, dcpW: st.dcpW }, false, this.thumbFbo, { x: 0, y: 0, w, h, imgW: w, imgH: h, tex: { origin: [0, 0], size: [w, h] } });
       const buf = new Uint8Array(w * h * 4);
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.thumbFbo);
       gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);

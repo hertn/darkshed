@@ -51,6 +51,7 @@ export const TUNE = {
   calHueK: [0.4, 0.4, 0.8],   // calibration hue: how far each primary turns at 100
   calSatK: [1.8, 0.6, 3.0],   // calibration saturation per primary (Lightroom's red and blue act much harder than green)
   calShR: 0.5, calShK: 0.8,   // calibration shadows tint (RAW only, as in Lightroom): brightness range and strength
+  colorTable: 1,  // RAW colour table (src/colortable.js, fitted on Lightroom Classic chart renders): 1 = on, 0 = off
   wbMix: 0.5,     // RAW white balance: 0 = forward-matrix model, 1 = camera-space rescale; the even blend fits Lightroom Classic best
   hsC: [-14, 24.4, 45.1, 100.4, 169.1, 229.8, 265, 337.9],   // hue centre of each HSL band (purple measured lower on Lightroom Classic)
   hsHb: [0.5, 0.5, 0.7, 1.0, 0.35, 1.0, 0.8, 0.3],           // per-band hue strength, fitted to Lightroom's shift per band on a colour chart
