@@ -149,12 +149,21 @@ export function kelvinGains(wb, K, tint) {
   // The camera-space rescale goes through libraw's matrix, which at extreme settings (warm + strong tint) turns grey into negative
   // red / green and a negative brightness; the shader then flipped the picture. Fade it out before that happens, judged by the
   // brightness it gives grey compared with the forward-matrix path: ordinary edits stay above 0.75 and keep the full blend.
-  const Y = (M) => 0.2126 * (M[0][0] + M[0][1] + M[0][2]) + 0.7152 * (M[1][0] + M[1][1] + M[1][2]) + 0.0722 * (M[2][0] + M[2][1] + M[2][2]);
   const r = Y(Md) / Math.max(Y(Mf), 1e-6);
   const t = (TUNE.wbMix ?? 0) * Math.min(1, Math.max(0, (r - 0.3) / 0.4));
   return Mf.map((r, i) => r.map((v, j) => v * (1 - t) + Md[i][j] * t)).flat();
 }
+/** Brightness of grey after a colour matrix. */
+const Y = (M) => 0.2126 * (M[0][0] + M[0][1] + M[0][2]) + 0.7152 * (M[1][0] + M[1][1] + M[1][2]) + 0.0722 * (M[2][0] + M[2][1] + M[2][2]);
 
+/** Weight of the tungsten colour table (src/colortable.js) for a photo: from its as-shot white balance, the way the colour
+ *  matrices blend. The table works on the as-shot colours, so a later white balance change does not move it. */
+export function profileWeight(wb) {
+  const as = asShot(wb);
+  return blendWeight(tempTintToXy(Math.max(1700, Math.min(50000, as.K)), Math.max(-150, Math.min(150, as.tint))));
+}
+/** Whether a RAW needs the white balance matrix (a set Kelvin or tint). */
+export const needsGains = (wb, p) => !!wb && !p.temp && !!(p.wbK || p.tint);
 /** Gains for a photo's params: Kelvin (0 = as shot) and the tint slider, which on a RAW is an offset from the as-shot tint. */
 export const paramGains = (wb, p) => kelvinGains(wb, p.wbK || asShot(wb).K, asShot(wb).tint + (p.tint || 0));
 
