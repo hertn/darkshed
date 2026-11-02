@@ -15,6 +15,7 @@
 - RAW colour and white balance match Lightroom much more closely: Kelvin and Tint use Lightroom's numbers (a Lightroom preset's own Temperature and Tint now carry over), Fujifilm RAW files get the camera's exposure offset that Lightroom applies, and HSL, Calibration, Contrast, Vignette, Sharpening and the built-in film looks were re-measured against Lightroom Classic.
 - Manual lens distortion now bends the right way round (as in Lightroom).
 - White balance Temp slider no longer goes haywire: on photos with a strong magenta tint (many night and indoor shots), dragging it warm made the colours jump, flip and snap back. It now changes smoothly all the way, with the same safety limits Lightroom uses. The slider knob also stays under your finger instead of jumping to the nearest 50 K mark.
+- About now has a "Support on Ko-fi" link next to GitHub, for anyone who wants to leave a tip. DarkShed stays free.
 - Phone: after a reload the open tool's sheet came back empty (except Light) until you switched tools, when solo mode (one section open at a time) was on. Solo mode now only acts on desktop.
 
 ## 0.9.12
