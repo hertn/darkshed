@@ -1,6 +1,7 @@
 // Keeps the open library on the device so it survives the browser / PWA being reloaded or evicted
 // (a message, switching apps, a crash). Originals and thumbnails live in IndexedDB; nothing leaves the device.
 import { idb, lsGet, lsSet } from './store.js';
+import { forgetDecoded, clearDecoded } from './decodecache.js';
 import { app, bus } from './app.js';
 
 // ---- what is kept, for how long, and how much ----
@@ -89,7 +90,7 @@ export function keepThumb(item, source) {
     if (blob) await idb.set('thumbs', item.key, blob);
   });
 }
-export const forgetPhoto = (key) => enqueue(async () => { await loadMeta(); await idb.del('files', key); await idb.del('thumbs', key); delete meta[key]; saveMeta(); });
+export const forgetPhoto = (key) => enqueue(async () => { forgetDecoded(key); await loadMeta(); await idb.del('files', key); await idb.del('thumbs', key); delete meta[key]; saveMeta(); });
 
 let idxTimer = 0;
 export function saveIndex() {
@@ -140,6 +141,7 @@ export async function storedStatus(key) {
   return { stored: true, until: expiryOf(key) };
 }
 export async function clearStored() {
+  await clearDecoded();
   for (const k of await idb.keys('files')) await idb.del('files', k);
   for (const k of await idb.keys('thumbs')) await idb.del('thumbs', k);
   await idb.del('kv', 'library'); meta = {}; await idb.del('kv', 'photoMeta');

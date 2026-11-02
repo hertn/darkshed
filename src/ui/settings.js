@@ -4,6 +4,7 @@ import { modal, toast } from './overlays.js';
 import { sync, syncNow, ping } from '../sync.js';
 import { lsGet, lsSet } from '../store.js';
 import { storageInfo, clearStored, keepPrefs, applyLimitsNow } from '../persist.js';
+import { clearDecoded } from '../decodecache.js';
 import { removeAll } from '../library.js';
 
 bus.on('open-settings', () => {
@@ -60,6 +61,7 @@ bus.on('open-settings', () => {
     daysSel.onchange = changed; capSel.onchange = changed;
     keepSel.onchange = async () => {
       keepPrefs.keep = keepSel.value === '1';
+      if (!keepPrefs.keep) clearDecoded();
       if (!keepPrefs.keep && confirm('Also delete the copies that are already stored? (Photos you have open stay open until the app reloads.)')) { await clearStored(); toast('Stored copies deleted'); }
       refreshStorage();
     };

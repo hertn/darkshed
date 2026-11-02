@@ -1,11 +1,12 @@
 // Library: the list of open photos, selection, thumbnails, filmstrip, ratings / flags.
 import { app, bus, curItem, makeItem, loadSaved, initHistory, changed, saveNow, scheduleSave, visibleItems } from './app.js';
 import { loadImage, loadThumb, isRaw } from './decode.js';
+import { getDecoded, putDecoded } from './decodecache.js';
 import { setImage, resetView } from './viewport.js';
 import { icon } from './ui/icons.js';
 import { menu, toast, modal } from './ui/overlays.js';
 import { makeGeo } from './geometry.js';
-import { keepPhoto, keepThumb, forgetPhoto, saveIndex, readLibrary } from './persist.js';
+import { keepPhoto, keepThumb, forgetPhoto, saveIndex, readLibrary, keepPrefs } from './persist.js';
 
 const strip = document.getElementById('strip');
 let nextId = 1, selToken = 0;
@@ -207,7 +208,12 @@ export async function select(i) {
   try {
     if (!img) {
       bus.emit('loading', `Opening ${it.name}…`);
-      img = await loadImage(it.file, (s) => bus.emit('loading', `${it.name}: ${s}`));
+      const raw = isRaw(it.file);
+      img = raw ? await getDecoded(it.key) : null;   // decoded before: skip the slow RAW decode
+      if (!img) {
+        img = await loadImage(it.file, (s) => bus.emit('loading', `${it.name}: ${s}`));
+        if (raw && keepPrefs.keep) setTimeout(() => putDecoded(it.key, img), 300);   // not when copies are not to be kept
+      }
     }
   } catch (e) {
     console.error(e);
