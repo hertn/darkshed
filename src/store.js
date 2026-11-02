@@ -1,5 +1,5 @@
 // Tiny IndexedDB wrapper (edits, LUTs, key/value) with a localStorage fallback for kv.
-const DB = 'darkshed', VERSION = 2, STORES = ['edits', 'luts', 'kv', 'files', 'thumbs'];
+const DB = 'darkshed', VERSION = 3, STORES = ['edits', 'luts', 'kv', 'files', 'thumbs', 'decoded'];
 let dbp = null;
 function open() {
   if (!dbp) {
