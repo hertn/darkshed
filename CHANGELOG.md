@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.15
+- Shadows and Highlights on RAW files rebuilt from measurements of Lightroom Classic exports (14 photos, night and daylight, four cameras, each slider exported on its own at several amounts). Like Lightroom, they now adapt to the photo: Shadows works relative to the photo's brightest parts and Highlights relative to its average brightness, so a street lamp in a night shot is pulled down much harder than a bright sky in daylight, and opening the shadows lifts the darkest areas most. Highlights pulled down now darkens bright areas as strongly as Lightroom does (it used to be far too weak), and it works before the tone curve, so detail in bright areas is kept. Highlights + is gentler than - and fades out towards white; Shadows - mirrors +. Measured improvements against Lightroom (average colour difference): night photo, Shadows +100: 11.0 to 4.1; daylight, Shadows +100: 11.3 to 8.4; night, Highlights only: 3.7 to 2.5; 25 / 50 / 100 series: 7.6 to 6.3. One set of 10 night edits that the old settings had been tuned on came out slightly worse (7.6 to 8.0).
+- RAW white balance no longer darkens the picture when it moves to cooler / more magenta settings: with it, warm night shots set cooler came out about 3 lightness units darker in the mid-tones than in Lightroom.
+- Lifted shadows are a little less colourful, as in Lightroom.
+
 ## 0.9.14
 - RAW colours are closer to Lightroom: every RAW file now gets DarkShed's own colour table, a gentle hue and saturation correction that depends on the colour and its brightness (for example reds, skin tones and blues come out the way Lightroom renders them). It was fitted by rendering test colour charts in DarkShed and in Lightroom Classic and measuring the difference; it contains no Adobe data. Works for every camera automatically, with a tungsten and a daylight version blended by the photo's light. Measured on 10 real Lightroom edits: the typical colour difference dropped from 6.0 to 5.3 (average 8.2 to 7.6); on the test charts from 5.2-6.6 to 5.0. Camera Matching is unchanged (it fits the camera's own JPEG instead).
 

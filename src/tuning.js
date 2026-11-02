@@ -39,7 +39,20 @@ export const TUNE = {
   ctK: 0.98,      // contrast strength
   shK: 1.75,      // stops of shadow lift at +100 (RAW; a gain on the region, so local contrast survives; 2.5 fitted the preview but overshot real exports)
   shHi: 0.50,     // brightness (0..1) where the shadows slider stops acting
-  shLift: 0,     // extra linear lift for the deepest shadows (was 0.015 before the tone map mask; it flattened contrast)
+  shLift: 0,
+  // RAW Shadows / Highlights (global, regional; src/gl.js shHlRaw): stops after the base curve at +100 shadows / -100 highlights
+  // by the region's brightness after the curve, relative to the photo. Measured on Lightroom Classic exports of 14 photos (night and
+  // daylight, 4 cameras) plus 25 / 50 / 100 series: Shadows follows the region's distance below the photo's white point (99th
+  // percentile, shTab: -14..+1 stops), Highlights its distance from the photo's key (mean log brightness, hlTab: -8..+13 stops),
+  // scaled by (dynamic range / 10 stops) ^ hlDrK. 0 = the older per-region model below (shK, rawHl*).
+  shHlTab: 1,
+  shTab: [6.2, 6.2, 6.2, 5.4, 4.6, 3.0, 1.95, 1.3, 0.97, 0.75, 0.47, 0.3, 0.23, 0.17, 0.08, 0.05],
+  hlTab: [0, -0.03, -0.07, -0.11, -0.17, -0.28, -0.36, -0.45, -0.5, -0.55, -0.75, -1.15, -1.45, -1.75, -2.2, -3.0, -3.75, -4.6, -5.3, -6.0, -6.5, -7.0],
+  hlDrK: 1,
+  shHlExp: 1,     // 1 = the photo's key / white point include the Exposure slider, 0 = measured before it
+  hlPosK: 0.55,   // Highlights +: strength relative to - (measured at +50 / +100; it also fades out towards white)
+  shSat: 0.1,    // RAW Shadows: saturation scale per stop of lift, exp2(-shSat * stops) (Lightroom lifts shadows with less colour;
+                 // 0.25 fitted shadows-only exports best, 0 the full edits: in between)     // extra linear lift for the deepest shadows (was 0.015 before the tone map mask; it flattened contrast)
   // JPEG / non-RAW files: measured on Lightroom Classic, Shadows and Highlights there reach across the whole tonal range
   // (Shadows +-100 moves mid-grey by about 1.5 stops, Highlights -100 pulls everything from the midtones up by ~0.9 stops).
   jpShK: 1.5, jpShHi: 1.05, jpHlK: 0.95, jpHlKneg: 0.9, jpHlLo: -0.25, jpHlTop: 0.75,
@@ -89,7 +102,8 @@ export const TUNE = {
   tmSigR: 1.5,   // ... and range sigma in stops (Lightroom picks about 1.4 - 2.5 from the photo's dynamic range)
   tmIter: 2,
   tmUp: 1.0,     // upsampling: how far (stops) a pixel may differ from a cell and still take its value
-  rawWbL: 1,     // RAW white balance keeps the brightness (1 = fully)
+  rawWbL: 0,     // RAW white balance keeps the brightness (1 = fully). 0 since 0.9.15: with 1, warm-to-cool + magenta edits came out
+                 // ~3 L darker in the mid-tones than Lightroom (night photos); daylight cameras were the same either way
   rawBase: [0.0022, 0.0022, 0.0019, 0.0025, 0.0025, 0.0022, 0.0029, 0.0029, 0.0025, 0.0035, 0.0035, 0.0029, 0.0045, 0.0045, 0.0036, 0.0063, 0.0062, 0.0054, 0.0096, 0.0093, 0.0093, 0.0147, 0.0143, 0.0149, 0.0222, 0.0219, 0.0223, 0.0334, 0.0329, 0.0325, 0.0493, 0.0483, 0.0475, 0.0721, 0.0706, 0.0705, 0.106, 0.1039, 0.1046, 0.1545, 0.1514, 0.1527, 0.2171, 0.2144, 0.2162, 0.2873, 0.2886, 0.2843, 0.3621, 0.3651, 0.366, 0.4805, 0.4777, 0.4723, 0.6145, 0.6127, 0.6095, 0.7512, 0.7465, 0.7636, 0.9054, 0.9088, 0.9001, 0.9468, 0.9487, 0.9438, 0.9764, 0.9772, 0.975, 0.9941, 0.9943, 0.9938, 1, 1, 1],   // encoded value (0..1) per knot, red / green / blue
   hlTop: 0.998,  // brightness where the highlights slider fades out again (white stays white)
 };
