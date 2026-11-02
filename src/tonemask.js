@@ -36,6 +36,7 @@ function build(W, H, lumAt) {
   }
   let L = new Float32Array(gw * gh);
   for (let k = 0; k < L.length; k++) L[k] = Math.log2(Math.max(cnt[k] ? sum[k] / cnt[k] : 0, 2 ** -14));
+  const cells = Float32Array.from(L).sort();   // the photo's brightness spread (for its key and white point, imageStats)
   // bilateral on the grid: spatial sigma in cells, range sigma in stops
   const ss = TUNE.tmSigS, sr = TUNE.tmSigR, R = Math.ceil(ss * 2);
   for (let it = 0; it < TUNE.tmIter; it++) {
@@ -55,7 +56,7 @@ function build(W, H, lumAt) {
     }
     L = out;
   }
-  return { w: gw, h: gh, data: L };
+  return { w: gw, h: gh, data: L, cells };
 }
 
 const lumOf = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -80,4 +81,20 @@ export function maskFromBitmap(bitmap) {
   const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
   const T = new Float32Array(256).map((_, i) => lin(i));
   return build(sw, sh, (x, y) => { const i = (y * sw + x) * 4; return lumOf(T[d[i]], T[d[i + 1]], T[d[i + 2]]); });
+}
+
+/** The photo's key (mean log2 brightness), white point (99th percentile) and dynamic range, after the RAW base curve at an
+ *  exposure offset of `stops` (Lightroom judges Highlights relative to the key and Shadows relative to the white point;
+ *  measured on Lightroom Classic exports). Output brightness = linear Y after the curve; baseG maps linear in -> encoded out. */
+export function imageStats(m, stops, baseG, sh = null) {
+  if (!m?.cells?.length) return null;
+  const dec = (e) => (e <= 0.04045 ? e / 12.92 : ((e + 0.055) / 1.055) ** 2.4);
+  const out = (l) => Math.log2(Math.max(dec(baseG(2 ** (l + stops))), 2 ** -16));
+  const c = m.cells, n = c.length;
+  const lo = out(c[Math.floor(n * 0.01)]), hi = out(c[Math.min(n - 1, Math.floor(n * 0.99))]);
+  // Highlights is judged on the picture after Shadows (Lightroom's stages run in that order): lifting the shadows raises the key,
+  // so a lamp in a night shot is pulled less when the shadows are opened up as well. sh = { k: shadows amount after amtK, tab }.
+  let s = 0;
+  for (let i = 0; i < n; i++) { const r = out(c[i]); s += r + (sh && sh.k ? sh.k * sh.tab(r - hi) : 0); }
+  return { mean: s / n, lo, hi };
 }
