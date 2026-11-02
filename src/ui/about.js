@@ -14,7 +14,7 @@ export const ABOUT = {
   credits: 'Open source (MIT). RAW decoding by LibRaw (LGPL 2.1 / CDDL 1.0) via libraw-wasm.',
   disclaimer: 'Not affiliated with Fujifilm. The Fujifilm-style looks are approximations, not real film simulations.',
   byline: 'Directed by <b style="color:var(--fg)">Hert Niks</b>. Built by <b style="color:var(--fg)">Claude</b>, an AI made by Anthropic.',
-  links: [['GitHub', 'https://github.com/hertn']],
+  links: [['GitHub', 'https://github.com/hertn'], ['Support on Ko-fi', 'https://ko-fi.com/hertn']],
 };
 
 bus.on('open-about', () => {
