@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.17
+- Importing a big batch of photos now shows a progress bar ("Importing photos: 38 of 240"), and the "older stored photos removed to stay under your limit" notice appears once when the import settles instead of staying on screen until every photo is loaded.
+- JPEG Highlights +100 no longer makes the brightest pixels darker than slightly dimmer ones (bright skies went flat and dipped); the lift now stays up to white.
+- The Temp slider (Kelvin) now always records an undo step when you let go of it.
+
 ## 0.9.16
 - Reopening a RAW photo is much faster: the decoded preview of the last 12 RAW photos you opened (up to 400 MB) is kept in the browser's storage, so switching back to a photo or reloading the app skips the slow RAW decode (on a Mac: about 2 s down to 0.3 s; more on phones). It follows the "keep copies of photos" setting: turned off, nothing is kept and the kept previews are deleted. "Delete stored copies" and removing a photo delete them too. Exports still decode the full-size file.
 
