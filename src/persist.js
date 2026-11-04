@@ -39,9 +39,18 @@ export function keepPhoto(item) {
     }
     touch(item.key, item.file.size);
     const evicted = await enforceCap(item.key);
-    if (evicted.length) bus.emit('persist-evicted', evicted.length);
+    if (evicted.length) noteEvicted(evicted.length);
     await checkSpace();
   });
+}
+
+// Importing a big batch evicts old copies one photo at a time: report it once, after things go quiet, instead of re-firing the toast
+// (each call restarts its timer, so it used to stay on screen until the whole import finished).
+let evictedN = 0, evictTimer = 0;
+function noteEvicted(n) {
+  evictedN += n; clearTimeout(evictTimer);
+  const fire = () => { if (running || queue.length) { evictTimer = setTimeout(fire, 1500); return; } bus.emit('persist-evicted', evictedN); evictedN = 0; };
+  evictTimer = setTimeout(fire, 1500);
 }
 
 /** Remove the oldest-used stored copies until the total is under the limit. */

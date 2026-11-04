@@ -45,6 +45,7 @@ function paramSlider(host, row, opts = {}) {
     onInput: (v) => (opts.set || setParam)(key, v),
     onChange: () => commit(opts.label || label),
   });
+  if (key === 'temp') for (const t of ['pointerup', 'keyup', 'touchend']) w.el.addEventListener(t, () => setTimeout(() => commit(label), 0));   // belt and braces: some browsers skip 'change' on this snapped slider
   host.append(w.el);
   widgets[key] = w;
   return w;

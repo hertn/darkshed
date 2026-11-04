@@ -211,6 +211,18 @@ bus.on('filter', refreshTop);
   });
 }
 
+// Progress for long jobs (importing a big batch): a slim bar with a count, at the bottom of the photo area, like Lightroom's.
+{
+  const box = document.createElement('div'); box.className = 'progbox'; box.hidden = true; box.setAttribute('role', 'progressbar');
+  const txt = document.createElement('span'), bar = document.createElement('div'), fill = document.createElement('i'); bar.append(fill); box.append(txt, bar); $('view').append(box);
+  bus.on('progress', (p) => {
+    if (!p) { box.hidden = true; return; }
+    box.hidden = false; txt.textContent = `${p.label}: ${Math.min(p.done + 1, p.total)} of ${p.total}`;
+    fill.style.width = (100 * p.done / p.total).toFixed(1) + '%';
+    box.setAttribute('aria-valuenow', String(p.done)); box.setAttribute('aria-valuemax', String(p.total));
+  });
+}
+
 // ---------- files ----------
 const fileInput = document.createElement('input');
 fileInput.type = 'file'; fileInput.multiple = true; fileInput.hidden = true;

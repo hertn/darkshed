@@ -180,13 +180,18 @@ export async function addFiles(fileList, { restore = false, thumbs = null, selec
   const start = selectKey ? Math.max(0, app.items.findIndex((x) => x.key === selectKey)) : first;
   await select(start);
   // thumbnails for the rest, one at a time (embedded RAW previews are fast)
+  const todo = added.filter((it) => !it.thumb), total = todo.length;
+  let n = 0;
   for (const it of added) {
     if (it.thumb || !app.items.includes(it)) continue;
+    if (total > 2) bus.emit('progress', { label: 'Importing photos', done: n, total });
+    n++;
     const bmp = await loadThumb(it.file);
     if (bmp && !it.edited) { it.thumb = bmp; keepThumb(it, bmp); }
     it.tile?.querySelector('.spin')?.remove();
     paintTile(it);
   }
+  bus.emit('progress', null);
   saveIndex();
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "darkshed",
-  "version": "0.9.16",
+  "version": "0.9.17",
   "description": "",
   "scripts": {
     "dev": "vite --host",
