@@ -1,14 +1,16 @@
-# DarkShed
+<p align="center">
+  <img src="public/icon-192.png" width="96" height="96" alt="DarkShed icon">
+</p>
+
+<h1 align="center">DarkShed</h1>
+
+<p align="center"><i>A darkroom, but in a shed.</i></p>
 
 <p align="center">
   <a href="https://github.com/hertn/darkshed/releases/latest"><img src="https://img.shields.io/github/v/release/hertn/darkshed?style=flat&amp;labelColor=15181e&amp;color=2ea44f&amp;label=version" alt="Latest version"></a>
   <a href="https://github.com/hertn/darkshed/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hertn/darkshed?style=flat&amp;labelColor=15181e&amp;color=blue" alt="License"></a>
   <a href="https://ko-fi.com/hertn"><img src="https://img.shields.io/badge/support-%E2%9D%A4%20Ko--fi-ff5e5b?style=flat&amp;labelColor=15181e&amp;logo=kofi&amp;logoColor=white" alt="Support on Ko-fi"></a>
 </p>
-
-<img src="public/icon-192.png" width="96" align="right" alt="DarkShed logo">
-
-*A darkroom, but in a shed.*
 
 A free, Lightroom-style **RAW + JPEG photo editor** that runs in your browser on Mac, Windows, Linux, iPad and iPhone. You run it yourself, on your own computer or a home server, and your presets sync between all your devices.
 
