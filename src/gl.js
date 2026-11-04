@@ -337,7 +337,7 @@ vec3 toneLin(vec3 c, vec4 A, vec4 B, float glob) {
   vec3 er = enc(c * gTmK);                             // the region's brightness decides the strength (tone map mask)
   float lr = mix(luma(er), max(er.r, max(er.g, er.b)), uMk.x);
   float ms = 1.0 - smoothstep(0.0, uTn2.w, lr);
-  float mh = smoothstep(mix(uTn.x, uTn.w, abs(A.z)), 1.0, lr) * (1.0 - smoothstep(A.z > 0.0 ? uTn3.z : 0.998, 1.0, lr));   // range widens with the amount; - reaches white
+  float mh = smoothstep(mix(uTn.x, uTn.w, abs(A.z)), 1.0, lr) * (A.z > 0.0 ? mix(1.0, 1.0 - smoothstep(uTn3.z, 1.0, lr), 0.5) : 1.0 - smoothstep(0.998, 1.0, lr));   // + keeps half its lift up to white so the result stays monotonic (a full fade made bright pixels darker than dimmer ones)   // range widens with the amount; - reaches white
   c *= exp2(A.w * uTn2.z * ms);
   c += max(A.w, 0.0) * uTn3.w * ms * smoothstep(0.0, 0.003, le);
   if (!uRawOn) c *= exp2(A.z * (A.z > 0.0 ? uTn.z : uTn.y) * mh);
