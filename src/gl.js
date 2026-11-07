@@ -807,14 +807,17 @@ export class Renderer {
   /** RAW colour table for this render (src/dcp.js), on texture unit 5. Off for Camera Matching, which fits the camera's JPEG itself. */
   bindDcp(p, state) {
     const gl = this.gl, on = state.raw && TUNE.colorTable && (state.p?.baseProfile || '') !== 'camera';
-    const mk = (w, h, data) => { const t = Renderer.tex2d(gl, w, h, gl.RGB32F, gl.RGB, gl.FLOAT, data); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); return t; };
+    // Unit 5 first: tex2d binds the new texture on the active unit, which here was still the tone mask's (unit 4), so the
+    // first draw of a fresh renderer (an export's first 512-row strip) read the colour table as its tone mask.
+    gl.activeTexture(gl.TEXTURE5);
+    const mk =(w, h, data) => { const t = Renderer.tex2d(gl, w, h, gl.RGB32F, gl.RGB, gl.FLOAT, data); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); return t; };
     if (!this.dcpDummy) this.dcpDummy = mk(1, 1, new Float32Array([0, 1, 1]));
     const d = COLOR_TABLE_DATA;
     if (on) {
       const t = blendTable(state.dcpW ?? 0.5);
       if (this.hsmSrc !== t) { if (this.hsmTex) gl.deleteTexture(this.hsmTex); const [H, S, V] = d.dims; this.hsmTex = mk(S, H * V, t); this.hsmSrc = t; }
     }
-    gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, on ? this.hsmTex : this.dcpDummy);
+    gl.bindTexture(gl.TEXTURE_2D, on ? this.hsmTex : this.dcpDummy);
     gl.uniform1i(p.u('uHsm'), 5);
     gl.uniform3f(p.u('uHsmD'), ...(on ? d.dims : [1, 1, 1]));
     gl.uniform1f(p.u('uDcp'), on ? 1 : 0);

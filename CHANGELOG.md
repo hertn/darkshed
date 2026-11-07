@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.18
+- Exports no longer come out with the top 512 rows brighter (and slightly differently coloured) than the rest of the photo. It showed up with any edit that uses Highlights or Shadows, such as the Nostalgic Neg look, whatever the export settings: the very first part of every export read the wrong brightness map. The on-screen preview was never affected.
+
 ## 0.9.17
 - Importing a big batch of photos now shows a progress bar ("Importing photos: 38 of 240"), and the "older stored photos removed to stay under your limit" notice appears once when the import settles instead of staying on screen until every photo is loaded.
 - JPEG Highlights +100 no longer makes the brightest pixels darker than slightly dimmer ones (bright skies went flat and dipped); the lift now stays up to white.
