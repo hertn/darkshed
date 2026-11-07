@@ -1,6 +1,6 @@
 // The Edit panel: histogram, Auto / B&W, and the Light / Color / Effects / Detail sections.
 import { app, curItem, changed, commit, registerSection, bus } from '../app.js';
-import { invalidateAll } from '../viewport.js';
+import { invalidateAll, setScopeBox } from '../viewport.js';
 import { PARAMS, HSL_PARAMS, GRADE_PARAMS, HSL_BANDS, BAND_HUE, SECTIONS, defaults, identityCurves } from '../params.js';
 import { curvesActive } from '../curves-math.js';
 import { createCurveEditor } from '../curves.js';
@@ -258,9 +258,34 @@ export function createEditPanel() {
   const setHistOpen = (on) => { hw.classList.toggle('closed', !on); hh.setAttribute('aria-expanded', on ? 'true' : 'false'); lsSet('histOpen', on ? '1' : '0'); };
   hh.onclick = () => setHistOpen(hw.classList.contains('closed'));
   setHistOpen(lsGet('histOpen', '1') === '1');
-  hw.append(hh, hc);
-  head.append(hw);
   histogram = createHistogram(hc);
+  // switch between the RGB histogram and the vectorscope (skin tone line)
+  const mb = document.createElement('button'); mb.className = 'hist-mode'; mb.type = 'button';
+  // Box: limit the scope to a draggable box on the photo (e.g. over a face); a viewing aid, not a mask
+  const bb = document.createElement('button'); bb.className = 'hist-box'; bb.type = 'button'; bb.textContent = 'Box';
+  bb.title = 'Read the vectorscope from a box on the photo (drag it over a face)';
+  let box = null;
+  const setBox = (on) => {
+    box = on ? box || { x0: 0.375, y0: 0.3, x1: 0.625, y1: 0.55 } : null;
+    bb.classList.toggle('on', !!box);
+    histogram.setRegion(box);
+    setScopeBox(box, (b) => { box = b; histogram.setRegion(b); });
+  };
+  bb.onclick = (e) => { e.stopPropagation(); setBox(!bb.classList.contains('on')); };
+  const setMode = (m) => {
+    histogram.setMode(m); hw.dataset.mode = histogram.mode;
+    const sc = histogram.mode === 'scope';
+    if (!sc && bb.classList.contains('on')) setBox(false);
+    hh.querySelector('.ttl').textContent = sc ? 'Vectorscope' : 'Histogram';
+    mb.textContent = sc ? 'RGB' : 'Scope'; mb.title = sc ? 'Show the histogram' : 'Show the vectorscope with the skin tone line';
+    if (sc && hw.classList.contains('closed')) setHistOpen(true);
+  };
+  mb.onclick = () => setMode(histogram.mode === 'scope' ? 'hist' : 'scope');
+  hw.setMode = setMode;                                   // the phone layout cycles modes by tapping the floating scope
+  setMode(histogram.mode);
+  const bar = document.createElement('div'); bar.className = 'hist-bar'; bar.append(hh, bb, mb);
+  hw.append(bar, hc);
+  head.append(hw);
   const row = document.createElement('div'); row.className = 'ph-row'; row.style.padding = '2px 12px 10px'; row.style.alignItems = 'center';
   const autoBtn = document.createElement('button'); autoBtn.className = 'btn small'; autoBtn.innerHTML = icon('auto', 15) + 'Auto';
   const doAuto = () => {

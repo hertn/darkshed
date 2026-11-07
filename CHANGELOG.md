@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.19
+- New vectorscope with a skin tone line, as in video editing programs. Click **Scope** in the histogram header (on a phone, tap the floating histogram) to switch: each colour in the photo is plotted by hue and saturation, and natural-looking skin sits on or near the skin tone line. **RGB** switches back to the histogram.
+- **Box** (in vectorscope mode) puts a box on the photo that you can move and resize; the vectorscope then reads only what is inside it, so you can check a face without the background getting in the way. It is a viewing aid only: it never changes the photo and is not a mask.
+- Phone: zooming in could sometimes get stuck so that panning with one finger zoomed instead, until the page was reloaded. Fixed.
+
 ## 0.9.18
 - Exports no longer come out with the top 512 rows brighter (and slightly differently coloured) than the rest of the photo. It showed up with any edit that uses Highlights or Shadows, such as the Nostalgic Neg look, whatever the export settings: the very first part of every export read the wrong brightness map. The on-screen preview was never affected.
 

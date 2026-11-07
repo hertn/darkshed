@@ -42,6 +42,42 @@ export function initViewport({ onReadback: rb, ensureLut: el } = {}) {
   return renderer;
 }
 
+// ---------- vectorscope sample box: { x0, y0, x1, y1 } in 0..1 of the uncropped source image (a viewing aid, never part of the edit) ----------
+let scopeBox = null, onScopeBox = () => {}, boxDrag = null;
+export function setScopeBox(box, onChange) { scopeBox = box; if (onChange) onScopeBox = onChange; overlayDirty = true; dirty = true; }
+const boxCorners = () => {
+  const A = renderer.geo.A, b = scopeBox;
+  return [[b.x0, b.y0], [b.x1, b.y0], [b.x1, b.y1], [b.x0, b.y1]].map(([u, v]) => view.srcToPx(u * A, v));
+};
+function boxHit(x, y, coarse) {
+  if (!scopeBox || app.tool !== 'edit') return null;
+  const c = boxCorners(), r = coarse ? 22 : 12;
+  for (let i = 0; i < 4; i++) if (Math.hypot(c[i][0] - x, c[i][1] - y) < r) return { corner: i };
+  let inside = false;                                           // point in the (possibly rotated) box
+  for (let i = 0, j = 3; i < 4; j = i++) if ((c[i][1] > y) !== (c[j][1] > y) && x < ((c[j][0] - c[i][0]) * (y - c[i][1])) / (c[j][1] - c[i][1]) + c[i][0]) inside = !inside;
+  return inside ? { corner: -1 } : null;
+}
+const srcUV = (x, y) => { const A = renderer.geo.A, [sx, sy] = view.pxToSrc(x, y); return [sx / A, sy]; };
+function boxMove(x, y) {
+  const [u, v] = srcUV(x, y), b = { ...boxDrag.b }, c = (t) => Math.min(1, Math.max(0, t));
+  if (boxDrag.corner < 0) {
+    const w = b.x1 - b.x0, h = b.y1 - b.y0, du = u - boxDrag.u, dv = v - boxDrag.v;
+    b.x0 = Math.min(1 - w, Math.max(0, b.x0 + du)); b.y0 = Math.min(1 - h, Math.max(0, b.y0 + dv)); b.x1 = b.x0 + w; b.y1 = b.y0 + h;
+  } else {
+    const k = boxDrag.corner;
+    if (k === 0 || k === 3) b.x0 = Math.min(c(u), b.x1 - 0.02); else b.x1 = Math.max(c(u), b.x0 + 0.02);
+    if (k === 0 || k === 1) b.y0 = Math.min(c(v), b.y1 - 0.02); else b.y1 = Math.max(c(v), b.y0 + 0.02);
+  }
+  scopeBox = b; onScopeBox(b); overlayDirty = true; dirty = true;
+}
+function drawScopeBox(g) {
+  if (!scopeBox || app.tool !== 'edit') return;
+  const c = boxCorners();
+  g.lineWidth = 3; g.strokeStyle = '#000a'; g.beginPath(); c.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.stroke();
+  g.lineWidth = 1.5; g.strokeStyle = '#e8c8aa'; g.stroke();
+  g.fillStyle = '#e8c8aa'; for (const [x, y] of c) g.fillRect(x - 4, y - 4, 8, 8);
+}
+
 export const setTool = (t) => { tool = t; canvas.style.cursor = t?.cursor || ''; overlayDirty = true; dirty = true; };
 export const redrawOverlay = () => { overlayDirty = true; dirty = true; };
 export const invalidateAll = () => { dirty = true; editDirty = true; geoDirty = true; overlayDirty = true; };
@@ -158,6 +194,7 @@ function drawOverlay() {
   g.scale(dpr, dpr);
   if (!renderer.geo) return;
   tool?.drawOverlay?.(g, view);
+  drawScopeBox(g);
   if (app.split != null) {
     const s = cssSize(), x = app.split * s.w;
     g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, s.h); g.stroke();
@@ -219,6 +256,9 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
     if (!app.loaded || !renderer.geo) return;
     const [x, y] = view.cssToLocal(e);
     lastPointerType = e.pointerType;
+    // the first finger of a new touch: any pointer still listed is stale (iOS can drop one without pointerup / pointercancel,
+    // which left one-finger drags pinch-zooming until a reload)
+    if (e.isPrimary) { ptrs.clear(); pinch = null; }
     ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     try { canvas.setPointerCapture(e.pointerId); } catch {}
     if (ptrs.size === 2) {
@@ -230,6 +270,8 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
     }
     if (wbPicking) { cancelWb(); pickWb(x, y); ptrs.delete(e.pointerId); return; }
     if (app.split != null && Math.abs(x - app.split * canvas.clientWidth) < 16) { splitDrag = true; return; }
+    const bh = !spaceDown && boxHit(x, y, e.pointerType !== 'mouse');
+    if (bh) { const [u, v] = srcUV(x, y); boxDrag = { ...bh, u, v, b: { ...scopeBox } }; return; }
     if (!spaceDown && tool?.pointerDown?.(e, x, y, view)) { toolDrag = true; return; }
     if (ptrs.size === 1) tapC = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), moved: false };
     if (ptrs.size === 1) swipe = e.pointerType === 'touch' && renderer.view.zoom <= 1.01 ? { id: e.pointerId, x: e.clientX, y: e.clientY, active: false, pts: [[performance.now(), e.clientX]] } : null; else swipe = null;
@@ -259,6 +301,7 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
       }
     }
     if (holdTimer && Math.hypot(e.clientX - holdX, e.clientY - holdY) > 10) { clearTimeout(holdTimer); holdTimer = 0; }
+    if (boxDrag) { boxMove(x, y); return; }
     if (splitDrag) { app.split = Math.min(0.98, Math.max(0.02, x / canvas.clientWidth)); dirty = true; overlayDirty = true; return; }
     if (toolDrag) { tool.pointerMove?.(e, x, y, view); return; }
     const r = canvas.getBoundingClientRect();
@@ -285,11 +328,12 @@ export const zoomToggle = () => (renderer.view.zoom > 1.01 ? zoomFit() : zoom100
     }
     if (swipe && swipe.id === e.pointerId) swipe = null;
     if (toolDrag && ptrs.size === 1) { tool.pointerUp?.(e, x, y, view); toolDrag = false; }
-    splitDrag = false;
+    splitDrag = false; boxDrag = null;
     ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
   };
   canvas.addEventListener('pointerup', up);
   canvas.addEventListener('pointercancel', up);
+  canvas.addEventListener('lostpointercapture', (e) => { if (ptrs.has(e.pointerId)) up(e); });   // capture lost with no pointerup
   canvas.addEventListener('dblclick', (e) => {
     if (!app.loaded || tool?.blocksDoubleClick || lastPointerType !== 'mouse') return;       // no double-tap zoom on touch screens
     const [nx, ny] = ndc(e);

@@ -111,7 +111,11 @@ export function initMobile({ setToolId }) {
   const hide = lsGet('mHist', '1') === '0';
   function floatHist(on) {
     const hw = histWrap(); if (!hw) return;
-    if (on) { hw.classList.add('hist-float'); hw.classList.toggle('off', lsGet('mHist', '1') === '0'); view.append(hw); hw.onclick = () => { const off = hw.classList.toggle('off'); lsSet('mHist', off ? '0' : '1'); }; }
+    if (on) { hw.classList.add('hist-float'); hw.classList.toggle('off', lsGet('mHist', '1') === '0'); view.append(hw); hw.onclick = () => {        // tap cycles: histogram -> vectorscope -> hidden -> histogram
+      if (hw.classList.contains('off')) { hw.classList.remove('off'); lsSet('mHist', '1'); hw.setMode?.('hist'); }
+      else if (hw.dataset.mode !== 'scope') hw.setMode?.('scope');
+      else { hw.classList.add('off'); lsSet('mHist', '0'); }
+    }; }
     else { hw.classList.remove('hist-float', 'off'); hw.onclick = null; head()?.prepend(hw); }
   }
   void hide;

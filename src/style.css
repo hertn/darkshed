@@ -113,6 +113,15 @@ svg { display: block; }
 .pane-sub { padding: 0 16px 10px; color: var(--mut); font-size: 12px; }
 .ph-row { display: flex; gap: 8px; padding: 0 12px 10px; flex-wrap: wrap; }
 .hist-wrap { padding: 12px 12px 6px; }
+.hist-bar { display: flex; align-items: center; }
+.hist-bar .hist-head { flex: 1; }
+.hist-mode { background: transparent; border: 0; padding: 0 2px 6px 8px; cursor: pointer; color: var(--mut); font-size: 11px; }
+.hist-mode:hover, .hist-box:hover { color: var(--fg); }
+.hist-box { background: transparent; border: 0; padding: 0 2px 6px 8px; cursor: pointer; color: var(--mut); font-size: 11px; }
+.hist-box.on { color: var(--acc); }
+.hist-wrap:not([data-mode=scope]) .hist-box, .hist-wrap.closed .hist-box { display: none; }
+.hist-wrap.closed .hist-mode { padding-bottom: 0; }
+canvas.hist.scope { height: 190px; }
 .hist-head { display: flex; align-items: center; width: 100%; background: transparent; border: 0; padding: 0 2px 6px; cursor: pointer; color: var(--fg); }
 .hist-head .ttl { font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
 .hist-head .ttl::after { content: ''; width: 6px; height: 6px; border-right: 1.6px solid var(--mut); border-bottom: 1.6px solid var(--mut); transform: translateY(1px) rotate(-135deg); transition: transform .12s; }
@@ -370,7 +379,10 @@ select:focus, input[type=text]:focus, input[type=search]:focus, input[type=numbe
   .hist-wrap.hist-float canvas.hist { height: 52px; background: transparent; }
   .hist-wrap.hist-float.off { width: 30px; height: 30px; padding: 0; overflow: hidden; opacity: .55; }
   .hist-wrap.hist-float.off canvas.hist { height: 30px; width: 30px; }
-  .hist-wrap.hist-float .hist-head { display: none; }
+  .hist-wrap.hist-float .hist-head, .hist-wrap.hist-float .hist-mode, .hist-wrap.hist-float.off .hist-bar { display: none; }
+  .hist-wrap.hist-float .hist-bar { position: absolute; right: 2px; top: 2px; z-index: 1; }
+  .hist-wrap.hist-float .hist-box { padding: 4px 6px; font-size: 10px; background: #000a; border-radius: 6px; }
+  .hist-wrap.hist-float:not(.off) canvas.hist.scope { height: 124px; }
   .hist-wrap.hist-float.closed canvas.hist { display: block; }
 
   /* colour grading on a phone: one wheel per page, swipe sideways or tap a tab */

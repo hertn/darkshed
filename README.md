@@ -55,6 +55,7 @@ The same app on a phone, with a layout built for touch:
 - **Editing:** light, curves, color (white balance, HSL, color grading), effects, detail, optics, B&W and calibration, plus crop, spot healing and masks (linear, radial, brush and range).
 - **RAW and more:** Fujifilm RAF, DNG, CR2/3, NEF, ARW and others, plus JPEG, PNG and HEIC. RAW files get camera-style profiles, including one that copies the look of the JPEG your camera stored in the file.
 - **Presets and LUTs:** import Lightroom presets (`.xmp`, `.lrtemplate`, `.zip`) and `.cube` LUTs, export your own as `.xmp`. A few Fujifilm-inspired looks are built in.
+- **Scopes:** RGB histogram, or a vectorscope with a skin tone line that can read the whole photo or just a box you drag over a face.
 - **Library:** a filmstrip and a grid for culling, with ratings, flags and filters.
 - **Export:** JPEG, PNG, WebP or 16-bit TIFF, with resize, output sharpening, sRGB or Display P3, and batch export as a ZIP.
 - **Safety net:** undo and redo, autosave, and recovery copies of your open photos kept on the device.
