@@ -25,11 +25,28 @@ const cancelWb = () => { if (wbPicking) { wbPicking = false; canvas.style.cursor
 let onReadback = () => {};
 let ensureLut = () => {};
 let rbTimer = 0, rbLast = 0;
+let glLost = false;
 
 export function initViewport({ onReadback: rb, ensureLut: el } = {}) {
   onReadback = rb || onReadback; ensureLut = el || ensureLut;
   try { renderer = new Renderer(canvas); } catch (e) { hud.textContent = String(e); hud.classList.add('show'); throw e; }
   app.renderer = renderer;
+  // The browser may take the GL context away (iOS does when the app has been in the background). Everything on the
+  // GPU is then gone: when it comes back, build a new renderer and upload the photo again.
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); glLost = true; });
+  canvas.addEventListener('webglcontextrestored', () => {
+    try {
+      const keepView = renderer.view;
+      renderer = new Renderer(canvas);
+      app.renderer = renderer;
+      renderer.view = keepView;
+      const L = app.loaded;
+      if (L) { renderer.setImage(L.img.width, L.img.height, L.img.half, L.img.fullW, L.img.fullH); L.spotSig = null; }
+      renderer.invalidateBefore();
+      glLost = false;
+      geoDirty = true; dirty = true; editDirty = true; overlayDirty = true;
+    } catch (err) { hud.textContent = String(err); hud.classList.add('show'); }
+  });
   new ResizeObserver(resize).observe(canvas);
   requestAnimationFrame(frame);
   bus.on('changed', (f = {}) => {
@@ -139,7 +156,7 @@ export function resetView() { renderer.view = { zoom: 1, px: 0, py: 0 }; rendere
 // ---------- render loop ----------
 function frame(now) {
   const it = curItem();
-  if (dirty && app.loaded && it) {
+  if (dirty && app.loaded && it && !glLost) {
     if (geoDirty) updateGeo();
     {   // spot removal: re-patch the working copy whenever the spots change
       const L = app.loaded, sig = spotSig(it.spots);

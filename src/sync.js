@@ -4,6 +4,7 @@ import { mergePresets } from './merge.js';
 import { userPresets, mergeUserPresets, listLuts, allLutData, saveLut, deleteLut } from './looks.js';
 import { idb, lsGet, lsSet } from './store.js';
 import { toast } from './ui/overlays.js';
+import { MAX_LUT_SIZE } from './lut.js';
 
 export const sync = { enabled: false, status: 'Not connected', last: 0 };
 const cfg = () => ({ url: (lsGet('syncUrl', '') || '').replace(/\/$/, ''), token: lsGet('syncToken', '') });
@@ -12,6 +13,10 @@ const api = (path, init = {}) => fetch(cfg().url + path, { ...init, headers: { .
 
 const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+/** JSON from the server, or an error if it did not answer 200 (an error body must never be treated as data). */
+const getJson = async (path) => { const r = await api(path); if (!r.ok) throw new Error(`${path}: ${r.status}`); return r.json(); };
+/** Same rules as the server's: RGBA8 3D data, so the byte count follows from the size. */
+const lutOk = (v) => !!v && Number.isInteger(v.size) && v.size >= 2 && v.size <= MAX_LUT_SIZE && typeof v.data === 'string' && v.data.length === 4 * Math.ceil((v.size ** 3 * 4) / 3);
 
 export async function ping() {
   try {
@@ -31,16 +36,19 @@ export async function syncNow(quiet = true) {
     if (!p.ok) { sync.enabled = false; sync.status = p.msg; if (!quiet) toast(p.msg); return; }
     sync.enabled = true;
     // presets: pull, merge, push the merge back
-    const remote = await (await api('/api/presets')).json();
+    const remote = await getJson('/api/presets');
     const merged = mergePresets(userPresets(), remote);
     await mergeUserPresets(merged);
-    await api('/api/presets', { method: 'PUT', body: JSON.stringify(merged) });
+    const put = await api('/api/presets', { method: 'PUT', body: JSON.stringify(merged) });
+    if (!put.ok) throw new Error(`presets upload: ${put.status}`);
     // LUTs: fetch the ones we lack, upload the ones the server lacks
-    const rl = await (await api('/api/luts')).json();
+    const rl = await getJson('/api/luts');
+    if (!Array.isArray(rl)) throw new Error('LUT list is not a list');
     const local = await listLuts();
     const have = new Set(local.map((l) => l.id)), there = new Set(rl.map((l) => l.id));
     for (const l of rl) if (!have.has(l.id)) {
-      const v = await (await api(`/api/luts/${l.id}`)).json();
+      const v = await getJson(`/api/luts/${l.id}`);
+      if (!lutOk(v)) { console.warn('ignored a LUT from the server that is not valid', l.id); continue; }
       await idb.set('luts', l.id, { name: v.name, size: v.size, data: unb64(v.data), updatedAt: v.updatedAt });
     }
     for (const [id, v] of await allLutData()) if (!there.has(id)) {

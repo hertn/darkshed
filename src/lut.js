@@ -1,4 +1,5 @@
 // .cube LUT import (3D only) -> RGBA8 3D texture data.
+export const MAX_LUT_SIZE = 256;   // the server accepts the same range
 export function parseCube(text) {
   let size = 0, title = '', min = [0, 0, 0], max = [1, 1, 1], is1d = false;
   const vals = [];
@@ -15,7 +16,9 @@ export function parseCube(text) {
     if (p.length >= 3 && p.every(Number.isFinite)) vals.push(p[0], p[1], p[2]);
   }
   if (is1d && !size) throw new Error('1D LUTs are not supported, use a 3D .cube');
-  if (!size || vals.length < size ** 3 * 3) throw new Error('Not a valid 3D .cube file');
+  if (!size) throw new Error('Not a valid 3D .cube file');
+  if (!Number.isInteger(size) || size < 2 || size > MAX_LUT_SIZE) throw new Error(`LUT size must be 2 to ${MAX_LUT_SIZE}`);
+  if (vals.length < size ** 3 * 3) throw new Error('Not a valid 3D .cube file');
   const n = size ** 3, data = new Uint8Array(n * 4);
   for (let i = 0; i < n; i++) {
     for (let c = 0; c < 3; c++) {

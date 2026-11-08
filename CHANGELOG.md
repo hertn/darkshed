@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.20
+- Fixes from a code review. **Server:** a crafted address could read files from a folder next to the app's `dist` folder (only ones whose folder name starts with `dist`); fixed. Two devices syncing at the same moment can no longer lose each other's presets or leave a broken file behind. LUT uploads are checked (right size, right amount of data, at most 200 LUTs), a bad request now answers 400 instead of 500, only GET and HEAD are served for the app, and a file that disappears mid-download no longer stops the server.
+- **Photo goes blank after switching apps (iPhone):** when the browser takes the graphics context away, DarkShed now builds it again and redraws the photo instead of staying black until you reload.
+- LUTs: a `.cube` file with an absurd size is refused instead of freezing the page; LUTs from the sync server are checked before they are stored; sync no longer treats a server error as data.
+- Preset packs (ZIP): refuses ZIPs that unpack to more than 256 MB, and says so for ZIP64 files.
+- Storage: the photo database recovers if opening it fails once, no longer blocks another tab that is updating it, and LUTs are always read together with their own ids. The Sync & settings storage count no longer reads every stored photo. Debug leftovers removed.
+
 ## 0.9.19
 - New vectorscope with a skin tone line, as in video editing programs. Click **Scope** in the histogram header (on a phone, tap the floating histogram) to switch: each colour in the photo is plotted by hue and saturation, and natural-looking skin sits on or near the skin tone line. **RGB** switches back to the histogram.
 - **Box** (in vectorscope mode) puts a box on the photo that you can move and resize; the vectorscope then reads only what is inside it, so you can check a face without the background getting in the way. It is a viewing aid only: it never changes the photo and is not a mask.

@@ -33,6 +33,22 @@ export async function zip(files) {
   return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
 }
 
+const MAX_UNZIPPED = 256 * 2 ** 20;   // all files together; a preset pack is a few MB, so more is a zip bomb or a mistake
+
+/** Inflate raw deflate data, giving up past `limit` bytes. */
+async function inflate(data, limit) {
+  const rd = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const parts = []; let n = 0;
+  for (;;) {
+    const { done, value } = await rd.read();
+    if (done) break;
+    n += value.length;
+    if (n > limit) { await rd.cancel(); throw new Error('This ZIP unpacks to too much data'); }
+    parts.push(value);
+  }
+  return new Blob(parts);
+}
+
 /** Read a ZIP (stored or deflated) -> [{ name, blob }]. Uses the browser's DecompressionStream for deflate. */
 export async function unzip(blob) {
   const buf = new Uint8Array(await blob.arrayBuffer());
@@ -44,6 +60,7 @@ export async function unzip(blob) {
   let p = dv.getUint32(eocd + 16, true);
   const dec = new TextDecoder();
   const out = [];
+  let budget = MAX_UNZIPPED;
   for (let n = 0; n < count; n++) {
     if (dv.getUint32(p, true) !== 0x02014b50) break;
     const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
@@ -51,13 +68,16 @@ export async function unzip(blob) {
     const name = dec.decode(buf.subarray(p + 46, p + 46 + nlen));
     p += 46 + nlen + elen + clen;
     if (name.endsWith('/') || name.startsWith('__MACOSX/') || name.split('/').pop().startsWith('.')) continue;
+    if (csize === 0xffffffff || off === 0xffffffff) throw new Error('ZIP64 files are not supported');
     const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
     const data = buf.subarray(start, start + csize);
-    let bytes;
-    if (method === 0) bytes = data;
-    else if (method === 8) bytes = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    let blob;
+    if (method === 0) blob = new Blob([data]);
+    else if (method === 8) blob = await inflate(data, budget);
     else continue;
-    out.push({ name, blob: new Blob([bytes]) });
+    budget -= blob.size;
+    if (budget < 0) throw new Error('This ZIP unpacks to too much data');
+    out.push({ name, blob });
   }
   return out;
 }

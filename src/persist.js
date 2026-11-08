@@ -115,8 +115,7 @@ export const saveIndexNow = () => { clearTimeout(idxTimer); const cur = app.item
 export async function readLibrary() {
   const expired = await pruneExpired();
   if (expired) bus.emit('persist-expired', expired);
-  let index; try { index = await idb.get('kv', 'library'); } catch (e) { window.__readErr = String(e); return null; }
-  window.__readIdx = index ? index.items.length : 'none';
+  let index; try { index = await idb.get('kv', 'library'); } catch { return null; }
   if (!index?.items?.length) return null;
   const files = [], thumbs = new Map();
   for (const { key } of index.items) {
@@ -135,7 +134,7 @@ export async function storageInfo() {
   let count = 0, bytes = 0, oldest = null;
   try {
     for (const k of await idb.keys('files')) {
-      count++; const f = await idb.get('files', k); const size = f?.size || meta[k]?.size || 0; bytes += size;
+      count++; const size = meta[k]?.size || (await idb.get('files', k))?.size || 0; bytes += size;
       const exp = expiryOf(k); if (exp && (oldest === null || exp < oldest)) oldest = exp;
     }
   } catch {}
