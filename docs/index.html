@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DarkShed: free RAW photo editor, a Lightroom alternative</title>
+<meta name="description" content="Free, private RAW and JPEG photo editor for Mac, Windows, Linux, iPad and iPhone. Masks, LUTs and Lightroom preset import, in your browser.">
+<link rel="canonical" href="https://hertn.github.io/darkshed/">
+<meta name="theme-color" content="#141211">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DarkShed">
+<meta property="og:title" content="DarkShed: free RAW photo editor, a Lightroom alternative">
+<meta property="og:description" content="Edit RAW and JPEG photos on Mac, Windows, Linux, iPad and iPhone. Free, open source, and your photos never leave your device.">
+<meta property="og:url" content="https://hertn.github.io/darkshed/">
+<meta property="og:image" content="https://hertn.github.io/darkshed/screenshots/edit.png">
+<meta property="og:image:width" content="1500">
+<meta property="og:image:height" content="900">
+<meta property="og:image:alt" content="DarkShed editing a photo, with Light and Color sliders, a histogram and a filmstrip">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "DarkShed",
+  "description": "A free, Lightroom-style RAW and JPEG photo editor that runs in the browser. Editing happens on your own device; photos are never uploaded.",
+  "url": "https://hertn.github.io/darkshed/",
+  "applicationCategory": "MultimediaApplication",
+  "applicationSubCategory": "Photo editor",
+  "operatingSystem": "macOS, Windows, Linux, iOS, iPadOS",
+  "downloadUrl": "https://github.com/hertn/darkshed/releases/latest",
+  "screenshot": "https://hertn.github.io/darkshed/screenshots/edit.png",
+  "image": "https://hertn.github.io/darkshed/icon-512.png",
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "hertn", "url": "https://github.com/hertn" },
+  "sameAs": ["https://github.com/hertn/darkshed"]
+}
+</script>
+
+<style>
+:root{
+  --bg:#141211; --surface:#1d1a18; --surface-2:#26221f; --line:#36302b;
+  --text:#e9e2da; --text-2:#b3a99f; --text-3:#8a8079;
+  --accent:#f0402f; --on-accent:#fff; --r:14px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+header.hero{text-align:center;padding-top:72px;padding-bottom:40px}
+.hero img.icon{width:96px;height:96px;border-radius:22px}
+h1{font-size:clamp(2.2rem,6vw,3.4rem);line-height:1.08;margin:18px 0 8px;letter-spacing:-.02em}
+.tag{color:var(--text-2);font-style:italic;margin:0 0 18px}
+.lede{max-width:640px;margin:0 auto 28px;font-size:1.15rem;color:var(--text)}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:600;border:1px solid var(--line)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn:focus-visible{outline:3px solid var(--text);outline-offset:3px}
+.note{color:var(--text-3);font-size:.9rem;margin-top:14px}
+figure{margin:0}
+.shot img{width:100%;height:auto;display:block;border-radius:var(--r);border:1px solid var(--line)}
+figcaption{color:var(--text-2);font-size:.9rem;margin-top:8px}
+section{padding-top:56px;padding-bottom:56px;border-top:1px solid var(--line)}
+h2{font-size:1.8rem;margin:0 0 20px;letter-spacing:-.01em}
+h3{font-size:1.05rem;margin:0 0 6px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.card p{margin:0;color:var(--text-2)}
+.shots2{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.phones{display:grid;gap:16px;grid-template-columns:repeat(4,1fr)}
+@media (max-width:640px){.phones{grid-template-columns:repeat(2,1fr)}}
+ol.steps{padding-left:1.2em}
+ol.steps li{margin-bottom:10px}
+code{background:var(--surface-2);padding:2px 6px;border-radius:6px;font-size:.92em}
+footer{border-top:1px solid var(--line);padding:32px 0 48px;color:var(--text-3);font-size:.9rem;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero wrap">
+    <img class="icon" src="icon-512.png" width="96" height="96" alt="DarkShed icon">
+    <h1>DarkShed</h1>
+    <p class="tag">A darkroom, but in a shed.</p>
+    <p class="lede">A free, Lightroom-style <strong>RAW and JPEG photo editor</strong> that runs in your browser on Mac, Windows, Linux, iPad and iPhone. Your photos never leave your device.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/hertn/darkshed/releases/latest">Download DarkShed</a>
+      <a class="btn" href="https://github.com/hertn/darkshed">View on GitHub</a>
+    </div>
+    <p class="note">Free and open source (MIT). Beta.</p>
+  </header>
+
+  <div class="wrap">
+    <figure class="shot">
+      <img src="screenshots/edit.png" width="1500" height="900" alt="Editing a photo in DarkShed: Light and Color sliders on the right, a histogram above them and a filmstrip along the bottom">
+      <figcaption>Sliders, histogram and filmstrip, laid out like Lightroom.</figcaption>
+    </figure>
+  </div>
+
+  <section class="wrap" aria-labelledby="why">
+    <h2 id="why">A free Lightroom alternative that runs on what you already own</h2>
+    <div class="grid">
+      <div class="card"><h3>Private by design</h3><p>RAW decoding (LibRaw in WebAssembly) and rendering happen on your device's GPU. Photos are never uploaded, not even to your own server.</p></div>
+      <div class="card"><h3>Every device, one app</h3><p>A web app for desktop browsers, with a touch layout for iPhone and iPad. Add it to your home screen and it runs full-screen.</p></div>
+      <div class="card"><h3>Presets that sync</h3><p>Run it on your computer or a home server and your presets and LUTs sync between all your devices.</p></div>
+      <div class="card"><h3>No subscription</h3><p>Free, no account, no ads. You run it yourself.</p></div>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="features">
+    <h2 id="features">Features</h2>
+    <div class="grid">
+      <div class="card"><h3>Full editing panel</h3><p>Light, curves, white balance, HSL, color grading, effects, detail, optics, B&amp;W and calibration, plus crop and spot healing.</p></div>
+      <div class="card"><h3>Masks</h3><p>Linear, radial, brush and range masks, each with its own adjustments.</p></div>
+      <div class="card"><h3>RAW support</h3><p>Fujifilm RAF, DNG, CR2/CR3, NEF, ARW and more, plus JPEG, PNG and HEIC. Includes a profile that matches your camera's own JPEG look.</p></div>
+      <div class="card"><h3>Lightroom presets and LUTs</h3><p>Import <code>.xmp</code>, <code>.lrtemplate</code> and <code>.zip</code> presets and <code>.cube</code> LUTs. Export your own as <code>.xmp</code>.</p></div>
+      <div class="card"><h3>Scopes</h3><p>RGB histogram, or a vectorscope with a skin tone line.</p></div>
+      <div class="card"><h3>Culling and export</h3><p>Grid view with ratings and flags. Export to JPEG, PNG, WebP or 16-bit TIFF in sRGB or Display P3, one photo or a batch as ZIP.</p></div>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="look">
+    <h2 id="look">Screenshots</h2>
+    <div class="shots2">
+      <figure class="shot"><img src="screenshots/masks.png" width="1500" height="900" loading="lazy" alt="A radial mask on a photo, with its own adjustment sliders"><figcaption>Masks: radial, linear, brush and range.</figcaption></figure>
+      <figure class="shot"><img src="screenshots/presets.png" width="1500" height="900" loading="lazy" alt="The presets panel with built-in looks, imported presets and LUTs, each previewed on the photo"><figcaption>Presets and LUTs, previewed on your photo.</figcaption></figure>
+      <figure class="shot"><img src="screenshots/grid.png" width="1500" height="900" loading="lazy" alt="Grid view of photos for culling, with star ratings and flags"><figcaption>Grid view for culling.</figcaption></figure>
+    </div>
+    <h3 style="margin-top:32px">On iPhone</h3>
+    <div class="phones">
+      <figure class="shot"><img src="screenshots/phone-edit.png" width="390" height="844" loading="lazy" alt="DarkShed on a phone: editing with the tool dock at the bottom"><figcaption>Edit</figcaption></figure>
+      <figure class="shot"><img src="screenshots/phone-color.png" width="390" height="844" loading="lazy" alt="DarkShed on a phone: the Color panel"><figcaption>Color</figcaption></figure>
+      <figure class="shot"><img src="screenshots/phone-presets.png" width="390" height="844" loading="lazy" alt="DarkShed on a phone: presets and looks"><figcaption>Presets</figcaption></figure>
+      <figure class="shot"><img src="screenshots/phone-grid.png" width="390" height="844" loading="lazy" alt="DarkShed on a phone: grid view for culling"><figcaption>Grid</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="get">
+    <h2 id="get">Get started</h2>
+    <ol class="steps">
+      <li><a href="https://github.com/hertn/darkshed/releases/latest">Download DarkShed</a> for Mac (Apple silicon or Intel), Windows or Linux.</li>
+      <li>Unzip it, open <strong>READ ME FIRST.txt</strong>, then double-click <strong>Start DarkShed</strong>. Your browser opens the editor.</li>
+      <li>On iPhone or iPad, open the address it shows in Safari and tap <strong>Share → Add to Home Screen</strong>.</li>
+    </ol>
+    <p>Prefer a home server? DarkShed also runs with Docker. See the <a href="https://github.com/hertn/darkshed#install">full install guide</a>.</p>
+  </section>
+
+  <section class="wrap" aria-labelledby="support">
+    <h2 id="support">Support</h2>
+    <p>DarkShed is free, with no ads. If you enjoy it, you can <a href="https://ko-fi.com/hertn">buy me a coffee on Ko-fi</a>.</p>
+  </section>
+</main>
+<footer class="wrap">
+  Made by <a href="https://github.com/hertn">hertn</a> with Claude. Sample photos by <a href="https://www.pexels.com/@hert/">hertn</a>. Not affiliated with Adobe; Lightroom is a trademark of Adobe.
+</footer>
+</body>
+</html>
